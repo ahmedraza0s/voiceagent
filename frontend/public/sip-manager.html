@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveKit SIP Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .sip-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .trunk-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .trunk-table th,
+        .trunk-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .trunk-table th {
+            color: var(--accent-color, #4f46e5);
+            font-weight: 600;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-sync {
+            background: var(--accent-color, #4f46e5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+        }
+
+        .status-msg {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .status-msg.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            display: block;
+        }
+
+        .status-msg.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            display: block;
+        }
+
+        .nav-links {
+            margin-bottom: 2rem;
+        }
+
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="dark-theme">
+    <div class="sip-container">
+        <div class="nav-links">
+            <a href="index.html">← Back to Console</a>
+            <a href="test.html">Test Voice</a>
+            <a href="test-stt.html">Test STT</a>
+        </div>
+
+        <h1>LiveKit SIP Management</h1>
+        <p style="color: #94a3b8; margin-bottom: 2rem;">Manage your SIP trunks and sync credentials with LiveKit.</p>
+
+        <!-- Current Trunks -->
+        <div class="section-card">
+            <h2>Current LiveKit Trunks</h2>
+            <div id="loadingTrunks" style="color: #94a3b8;">Loading trunks...</div>
+            <table class="trunk-table" id="trunkTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Number(s)</th>
+                        <th>Type</th>
+                        <th>ID</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="trunkList"></tbody>
+            </table>
+        </div>
+
+        <!-- Dispatch Rules -->
+        <div class="section-card">
+            <h2>Dispatch Rules</h2>
+            <div id="loadingRules" style="color: #94a3b8;">Loading rules...</div>
+            <table class="trunk-table" id="ruleTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Room</th>
+                        <th>ID</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="ruleList"></tbody>
+            </table>
+        </div>
+
+        <!-- Sync/Add Section -->
+        <div class="section-card">
+            <h2>Add New SIP Trunk</h2>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label>Trunk Type</label>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: white; cursor: pointer;">
+                        <input type="radio" name="trunkType" value="outbound" checked style="width: auto;"
+                            onclick="toggleFields('outbound')"> Outbound
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: white; cursor: pointer;">
+                        <input type="radio" name="trunkType" value="inbound" style="width: auto;"
+                            onclick="toggleFields('inbound')"> Inbound
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Trunk Name</label>
+                    <input type="text" id="trunkName" value="VivPhone Trunk">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number(s)</label>
+                    <input type="text" id="trunkNumbers" placeholder="e.g. +1234567890 (comma separated)">
+                </div>
+            </div>
+
+            <!-- Outbound Specific -->
+            <div id="outboundFields">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SIP Domain / Address</label>
+                        <input type="text" id="sipDomain">
+                    </div>
+                    <div class="form-group">
+                        <label>Auth Username</label>
+                        <input type="text" id="sipUser">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Auth Password (confirm with .env or enter new)</label>
+                    <input type="password" id="sipPass" placeholder="Enter password">
+                </div>
+            </div>
+
+            <!-- Inbound Specific -->
+            <div id="inboundFields" style="display: none;">
+                <div class="form-group">
+                    <label>Allowed Source IP Addresses (optional)</label>
+                    <input type="text" id="allowedAddresses" placeholder="e.g. 51.195.161.145, 51.195.161.146">
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.4rem;">Limit incoming calls to these SIP
+                        provider IPs.</p>
+                </div>
+            </div>
+
+            <button class="btn-sync" onclick="pushToLiveKit()">🚀 Push to LiveKit</button>
+            <div id="syncStatus" class="status-msg"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentType = 'outbound';
+
+        function toggleFields(type) {
+            currentType = type;
+            document.getElementById('outboundFields').style.display = type === 'outbound' ? 'block' : 'none';
+            document.getElementById('inboundFields').style.display = type === 'inbound' ? 'block' : 'none';
+
+            if (type === 'inbound') {
+                document.getElementById('trunkName').value = 'Inbound Trunk';
+            } else {
+                document.getElementById('trunkName').value = 'VivPhone Trunk';
+            }
+        }
+
+        async function loadData() {
+            // Load Env Config
+            try {
+                const env = await fetch('/api/sip/env-config').then(r => r.json());
+                document.getElementById('sipDomain').value = env.domain;
+                document.getElementById('sipUser').value = env.username;
+                document.getElementById('trunkNumbers').value = env.callerId || '';
+            } catch (e) {
+                console.error('Failed to load env config', e);
+            }
+
+            // Load Trunks
+            try {
+                const trunks = await fetch('/api/sip/trunks').then(r => r.json());
+                const list = document.getElementById('trunkList');
+                list.innerHTML = '';
+
+                if (trunks.outbound && trunks.outbound.length > 0) {
+                    trunks.outbound.forEach(t => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${t.name || 'Unnamed'}</td>
+                            <td>${(t.numbers || []).join(', ') || 'Any'}</td>
+                            <td><span style="color: #a855f7">Outbound</span></td>
+                            <td style="font-family: monospace; font-size: 0.8rem;">${t.sipTrunkId}</td>
+                            <td><button class="btn-delete" onclick="deleteTrunk('${t.sipTrunkId}')">Delete</button></td>
+                        `;
+                        list.appendChild(tr);
+                    });
+                }
+
+                if (trunks.inbound && trunks.inbound.length > 0) {
+                    trunks.inbound.forEach(t => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${t.name || 'Unnamed'}</td>
+                            <td>${(t.numbers || []).join(', ') || 'Any'}</td>
+                            <td><span style="color: #22c55e">Inbound</span></td>
+                            <td style="font-family: monospace; font-size: 0.8rem;">${t.sipTrunkId}</td>
+                            <td><button class="btn-delete" onclick="deleteTrunk('${t.sipTrunkId}')">Delete</button></td>
+                        `;
+                        list.appendChild(tr);
+                    });
+                }
+
+                if (list.children.length > 0) {
+                    document.getElementById('loadingTrunks').style.display = 'none';
+                    document.getElementById('trunkTable').style.display = 'table';
+                } else {
+                    document.getElementById('loadingTrunks').textContent = 'No trunks found.';
+                }
+            } catch (e) {
+                document.getElementById('loadingTrunks').textContent = 'Error loading trunks.';
+            }
+
+            // Load Rules
+            try {
+                const rules = await fetch('/api/sip/dispatch-rules').then(r => r.json());
+                const list = document.getElementById('ruleList');
+                list.innerHTML = '';
+
+                if (rules && rules.length > 0) {
+                    document.getElementById('loadingRules').style.display = 'none';
+                    document.getElementById('ruleTable').style.display = 'table';
+                    rules.forEach(r => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${r.name || 'Unnamed'}</td>
+                            <td>${r.rule?.roomName || 'N/A'}</td>
+                            <td style="font-family: monospace; font-size: 0.8rem;">${r.sipDispatchRuleId}</td>
+                            <td><button class="btn-delete" onclick="deleteRule('${r.sipDispatchRuleId}')">Delete</button></td>
+                        `;
+                        list.appendChild(tr);
+                    });
+                } else {
+                    document.getElementById('loadingRules').textContent = 'No rules found.';
+                }
+            } catch (e) {
+                document.getElementById('loadingRules').textContent = 'Error loading rules.';
+            }
+        }
+
+        async function deleteTrunk(id) {
+            if (!confirm('Are you sure you want to delete this trunk?')) return;
+            try {
+                const res = await fetch(`/api/sip/trunks/${id}`, { method: 'DELETE' });
+                if (res.ok) loadData();
+                else alert('Failed to delete: ' + (await res.json()).error);
+            } catch (e) {
+                alert('Network error during deletion');
+            }
+        }
+
+        async function deleteRule(id) {
+            if (!confirm('Are you sure you want to delete this rule?')) return;
+            try {
+                const res = await fetch(`/api/sip/dispatch-rules/${id}`, { method: 'DELETE' });
+                if (res.ok) loadData();
+                else alert('Failed to delete rule');
+            } catch (e) {
+                alert('Network error during deletion');
+            }
+        }
+
+        async function pushToLiveKit() {
+            const status = document.getElementById('syncStatus');
+            status.className = 'status-msg';
+            status.textContent = 'Syncing...';
+            status.style.display = 'block';
+
+            const name = document.getElementById('trunkName').value;
+            const numbers = document.getElementById('trunkNumbers').value.split(',').map(n => n.trim()).filter(Boolean);
+
+            let endpoint = '/api/sip/outbound';
+            let payload = { name, numbers };
+
+            if (currentType === 'outbound') {
+                payload.address = document.getElementById('sipDomain').value;
+                payload.authUsername = document.getElementById('sipUser').value;
+                payload.authPassword = document.getElementById('sipPass').value;
+
+                if (!payload.authPassword) {
+                    status.textContent = 'Auth Password is required for Outbound trunks.';
+                    status.className = 'status-msg error';
+                    return;
+                }
+            } else {
+                endpoint = '/api/sip/inbound';
+                const ips = document.getElementById('allowedAddresses').value.split(',').map(i => i.trim()).filter(Boolean);
+                if (ips.length > 0) {
+                    payload.allowedAddresses = ips;
+                }
+            }
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    status.textContent = `✅ ${currentType.charAt(0).toUpperCase() + currentType.slice(1)} trunk successfully added!`;
+                    status.className = 'status-msg success';
+                    loadData();
+                } else {
+                    status.textContent = '❌ Error: ' + (data.error || 'Failed to sync');
+                    status.className = 'status-msg error';
+                }
+            } catch (e) {
+                status.textContent = '❌ Network error during sync';
+                status.className = 'status-msg error';
+            }
+        }
+
+        loadData();
+        toggleFields('outbound'); // Ensure UI matches default selection
+    </script>
+</body>
+
+</html>

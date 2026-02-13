@@ -1,24 +1,21 @@
-import { RoomServiceClient } from 'livekit-server-sdk';
-import logger from '../../utils/logger';
+import {
+    SipClient,
+    CreateSipInboundTrunkOptions,
+    CreateSipOutboundTrunkOptions,
+} from 'livekit-server-sdk';
 import config from '../../config';
+import logger from '../../utils/logger';
+import { SIPTransport } from '@livekit/protocol';
 
 /**
- * LiveKit SIP Manager (Simplified)
- * 
- * IMPORTANT: This is a PLACEHOLDER implementation.
- * LiveKit SIP requires configuration through the LiveKit Cloud dashboard.
- * 
- * Steps to enable full SIP functionality:
- * 1. Go to https://cloud.livekit.io
- * 2. Configure SIP trunk with VivPhone credentials
- * 3. Get trunk ID from dashboard
- * 4. Use LiveKit's SIP Dispatch API to route calls
+ * LiveKit SIP Manager
+ * Programmatically manages SIP trunks and dispatch rules on the LiveKit server.
  */
-export class LiveKitSIPTrunkManager {
-    private roomService: RoomServiceClient;
+export class LiveKitSIPManager {
+    private client: SipClient;
 
     constructor() {
-        this.roomService = new RoomServiceClient(
+        this.client = new SipClient(
             config.livekit.url,
             config.livekit.apiKey,
             config.livekit.apiSecret
@@ -26,32 +23,110 @@ export class LiveKitSIPTrunkManager {
     }
 
     /**
-     * Create room for SIP call
+     * Create an inbound SIP trunk
      */
-    async createRoomForCall(roomName: string): Promise<void> {
-        await this.roomService.createRoom({
-            name: roomName,
-            emptyTimeout: 300,
-            maxParticipants: 10,
-        });
+    async createInboundTrunk(name: string, numbers: string[], options: Partial<CreateSipInboundTrunkOptions> = {}) {
+        try {
+            logger.info('Creating LiveKit Inbound SIP Trunk', { name, numbers });
+            const trunk = await this.client.createSipInboundTrunk(name, numbers, options);
+            logger.info('✅ Inbound Trunk created', { id: trunk.sipTrunkId });
+            return trunk;
+        } catch (error: any) {
+            logger.error('Failed to create inbound trunk', { error: error.message });
+            throw error;
+        }
     }
 
     /**
-     * Make a call (requires LiveKit SIP to be configured)
-     * 
-     * NOTE: This will throw an error until you:
-     * 1. Configure SIP trunk in LiveKit dashboard
-     * 2. Enable SIP in your LiveKit project
+     * Create an outbound SIP trunk
      */
-    async makeCall(_phoneNumber: string, _roomName: string): Promise<string> {
-        logger.warn('⚠️  LiveKit SIP not fully configured!');
-        logger.warn('This requires manual setup in LiveKit Cloud dashboard');
-        logger.warn('See LIVEKIT_SIP_SETUP.md for instructions');
+    async createOutboundTrunk(name: string, address: string, numbers: string[], options: Partial<CreateSipOutboundTrunkOptions> = {}) {
+        try {
+            logger.info('Creating LiveKit Outbound SIP Trunk', { name, address, numbers });
+            const trunk = await this.client.createSipOutboundTrunk(name, address, numbers, {
+                transport: SIPTransport.SIP_TRANSPORT_UDP,
+                ...options
+            });
+            logger.info('✅ Outbound Trunk created', { id: trunk.sipTrunkId });
+            return trunk;
+        } catch (error: any) {
+            logger.error('Failed to create outbound trunk', { error: error.message });
+            throw error;
+        }
+    }
 
-        throw new Error(
-            'LiveKit SIP not configured. ' +
-            'Please set up SIP trunk in LiveKit dashboard. ' +
-            'See LIVEKIT_SIP_SETUP.md for detailed instructions.'
-        );
+    /**
+     * List all SIP trunks
+     */
+    async listTrunks() {
+        try {
+            const inbound = await this.client.listSipInboundTrunk();
+            const outbound = await this.client.listSipOutboundTrunk();
+            return {
+                inbound,
+                outbound
+            };
+        } catch (error: any) {
+            logger.error('Failed to list SIP trunks', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a SIP trunk
+     */
+    async deleteTrunk(trunkId: string) {
+        try {
+            logger.info('Deleting SIP Trunk', { trunkId });
+            await this.client.deleteSipTrunk(trunkId);
+            logger.info('✅ Trunk deleted', { trunkId });
+        } catch (error: any) {
+            logger.error('Failed to delete SIP trunk', { error: error.message, trunkId });
+            throw error;
+        }
+    }
+
+    /**
+     * Create a SIP dispatch rule (Direct)
+     */
+    async createDirectDispatchRule(name: string, roomName: string, trunkIds?: string[]) {
+        try {
+            logger.info('Creating Direct SIP Dispatch Rule', { name, roomName });
+            const rule = await this.client.createSipDispatchRule(
+                { type: 'direct', roomName },
+                { name, trunkIds }
+            );
+            logger.info('✅ Dispatch Rule created', { id: rule.sipDispatchRuleId });
+            return rule;
+        } catch (error: any) {
+            logger.error('Failed to create dispatch rule', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * List all SIP dispatch rules
+     */
+    async listDispatchRules() {
+        try {
+            return await this.client.listSipDispatchRule();
+        } catch (error: any) {
+            logger.error('Failed to list dispatch rules', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a SIP dispatch rule
+     */
+    async deleteDispatchRule(ruleId: string) {
+        try {
+            logger.info('Deleting SIP Dispatch Rule', { ruleId });
+            await this.client.deleteSipDispatchRule(ruleId);
+            logger.info('✅ Dispatch Rule deleted', { ruleId });
+        } catch (error: any) {
+            logger.error('Failed to delete dispatch rule', { error: error.message, ruleId });
+            throw error;
+        }
     }
 }

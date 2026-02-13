@@ -5,6 +5,7 @@ import path from 'path';
 import config from './config';
 import logger from './utils/logger';
 import { SIPService } from './services/sip';
+import { LiveKitSIPManager } from './services/sip/livekit-sip-manager';
 import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
@@ -14,11 +15,15 @@ import { SarvamTTSService } from './services/tts/sarvam';
  */
 class VoiceAgentApp {
     private sipService: SIPService;
+    private sipManager: LiveKitSIPManager;
     private activePipelines: Map<string, ConversationPipeline> = new Map();
 
     constructor() {
         this.sipService = new SIPService();
+        this.sipManager = new LiveKitSIPManager();
     }
+
+    // ... existing code ...
 
     async makeOutboundCall(phoneNumber: string, systemPrompt?: string, voiceId?: string): Promise<string> {
         try {
@@ -96,6 +101,35 @@ class VoiceAgentApp {
     getActiveCalls(): string[] {
         return Array.from(this.activePipelines.keys());
     }
+
+    // SIP Management Methods
+    async getSipTrunks() {
+        return await this.sipManager.listTrunks();
+    }
+
+    async createInboundTrunk(name: string, numbers: string[], options: any) {
+        return await this.sipManager.createInboundTrunk(name, numbers, options);
+    }
+
+    async createOutboundTrunk(name: string, address: string, numbers: string[], options: any) {
+        return await this.sipManager.createOutboundTrunk(name, address, numbers, options);
+    }
+
+    async deleteSipTrunk(id: string) {
+        return await this.sipManager.deleteTrunk(id);
+    }
+
+    async getSipDispatchRules() {
+        return await this.sipManager.listDispatchRules();
+    }
+
+    async createSipDispatchRule(name: string, roomName: string, trunkIds?: string[]) {
+        return await this.sipManager.createDirectDispatchRule(name, roomName, trunkIds);
+    }
+
+    async deleteSipDispatchRule(id: string) {
+        return await this.sipManager.deleteDispatchRule(id);
+    }
 }
 
 const { app } = expressWs(express());
@@ -167,6 +201,101 @@ app.post('/api/end-call', async (req, res) => {
 app.get('/api/calls', (_req, res) => {
     return res.json({ activeCalls: voiceApp.getActiveCalls() });
 });
+
+// --- SIP MANAGEMENT API ---
+
+// GET: Current SIP Env Config (Safe)
+app.get('/api/sip/env-config', (_req, res) => {
+    return res.json({
+        username: config.sip.username,
+        domain: config.sip.domain,
+        port: config.sip.port,
+        callerId: config.sip.callerId
+    });
+});
+
+// GET: List all trunks
+app.get('/api/sip/trunks', async (_req, res) => {
+    try {
+        const trunks = await voiceApp.getSipTrunks();
+        return res.json(trunks);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// POST: Create outbound trunk (From Env or Custom)
+app.post('/api/sip/outbound', async (req, res) => {
+    const { name, address, numbers, authUsername, authPassword } = req.body;
+    try {
+        const trunk = await voiceApp.createOutboundTrunk(name, address, numbers, {
+            authUsername,
+            authPassword
+        });
+        return res.json({ success: true, trunk });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// POST: Create inbound trunk
+app.post('/api/sip/inbound', async (req, res) => {
+    const { name, numbers, allowedAddresses, allowedNumbers } = req.body;
+    try {
+        const trunk = await voiceApp.createInboundTrunk(name, numbers, {
+            allowedAddresses,
+            allowedNumbers
+        });
+        return res.json({ success: true, trunk });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// DELETE: Delete a trunk
+app.delete('/api/sip/trunks/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await voiceApp.deleteSipTrunk(id);
+        return res.json({ success: true });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// GET: List dispatch rules
+app.get('/api/sip/dispatch-rules', async (_req, res) => {
+    try {
+        const rules = await voiceApp.getSipDispatchRules();
+        return res.json(rules);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// POST: Create dispatch rule
+app.post('/api/sip/dispatch-rules', async (req, res) => {
+    const { name, roomName, trunkIds } = req.body;
+    try {
+        const rule = await voiceApp.createSipDispatchRule(name, roomName, trunkIds);
+        return res.json({ success: true, rule });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// DELETE: Delete dispatch rule
+app.delete('/api/sip/dispatch-rules/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await voiceApp.deleteSipDispatchRule(id);
+        return res.json({ success: true });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// --- END SIP MANAGEMENT API ---
 
 // WebSocket: Test STT in real-time
 (app as any).ws('/ws/test-stt', (ws: any) => {

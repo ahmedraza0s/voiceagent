@@ -1,5 +1,6 @@
 
 import { EventEmitter } from 'events';
+import { Buffer } from 'node:buffer';
 import { DirectSIPDialer } from './direct-dialer';
 import { LiveKitRoomService } from '../rooms/livekit';
 import { LiveKitPhoneBridge } from '../rooms/livekit-phone-bridge';
@@ -151,7 +152,7 @@ export class SIPService extends EventEmitter {
         return callId;
     }
 
-    sendAudio(pcm16: Buffer): void {
+    sendAudio(_pcm16: Buffer): void {
         // No-op
     }
 
