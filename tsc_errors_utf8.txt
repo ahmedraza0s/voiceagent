@@ -1,0 +1,4 @@
+﻿src/services/conversation/pipeline.ts(22,13): error TS6133: 'roomName' is declared but its value is never read.
+src/services/sip/livekit-sip-manager.ts(1,29): error TS6133: 'AccessToken' is declared but its value is never read.
+src/services/sip/livekit-sip-manager.ts(46,20): error TS6133: 'phoneNumber' is declared but its value is never read.
+src/services/sip/livekit-sip-manager.ts(46,41): error TS6133: 'roomName' is declared but its value is never read.

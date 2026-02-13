@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarvam TTS Test</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 0.5rem;
+            font-size: 1.875rem;
+            color: var(--primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--bg);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 100px;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: 2px solid var(--primary);
+            border-color: transparent;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #334155;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status {
+            margin-top: 1.5rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-loading {
+            display: block !important;
+            background-color: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .status-success {
+            display: block !important;
+            background-color: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-error {
+            display: block !important;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .audio-player {
+            margin-top: 1.5rem;
+            width: 100%;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Sarvam TTS Test</h1>
+        <p>Enter text to test Sarvam.ai Voice Generation</p>
+
+        <textarea id="textInput"
+            placeholder="Enter text to speak...">नमस्ते, मैं सरवम एआई हूँ। मैं आपकी कैसे मदद कर सकता हूँ?</textarea>
+
+        <button id="speakBtn">Speak Text</button>
+
+        <div id="status"></div>
+
+        <audio id="audioPlayer" class="audio-player" controls></audio>
+
+        <div style="margin-top: 2rem; text-align: left;">
+            <a href="test-stt.html" style="color: var(--text-secondary); text-decoration: none; font-size: 0.875rem;">←
+                Back to STT Test</a>
+        </div>
+    </div>
+
+    <script>
+        const speakBtn = document.getElementById('speakBtn');
+        const textInput = document.getElementById('textInput');
+        const status = document.getElementById('status');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        function setStatus(message, type) {
+            status.textContent = message;
+            status.className = '';
+            if (type) status.classList.add(`status-${type}`);
+            else status.style.display = 'none';
+        }
+
+        speakBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            if (!text) {
+                setStatus('Please enter some text', 'error');
+                return;
+            }
+
+            try {
+                speakBtn.disabled = true;
+                setStatus('Generating speech...', 'loading');
+                audioPlayer.style.display = 'none';
+
+                const response = await fetch('/api/test-tts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to generate speech');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+
+                audioPlayer.src = url;
+                audioPlayer.style.display = 'block';
+                setStatus('Speech generated successfully!', 'success');
+
+                // Auto play
+                audioPlayer.play().catch(e => {
+                    console.log('Auto-play prevented by browser');
+                });
+
+            } catch (err) {
+                setStatus(err.message, 'error');
+            } finally {
+                speakBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

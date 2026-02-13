@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Agent Dialer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>AI Voice Agent</h1>
+                <p>Enter a number to start a conversation</p>
+            </header>
+
+            <main>
+                <div class="input-group">
+                    <input type="tel" id="phoneNumber" placeholder="+91 11111 22222" list="format-suggestions">
+                    <datalist id="format-suggestions">
+                        <option value="+91">India</option>
+                        <option value="+1">USA</option>
+                    </datalist>
+                </div>
+
+                <div class="input-group">
+                    <label for="systemPrompt">Agent Personality & Greeting</label>
+                    <textarea id="systemPrompt"
+                        placeholder="Hi, I'm Rachel from VivPhone. I'm here to help you with your account. How can I assist you today?">You are Rachel, a helpful and friendly AI assistant from VivPhone. 
+Your tone is professional but warm. 
+Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help you today?"</textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="voiceId">Sarvam AI Voice</label>
+                    <select id="voiceId">
+                        <optgroup label="Male Voices">
+                            <option value="shubh" selected>Shubh (Default)</option>
+                            <option value="rahul">Rahul</option>
+                            <option value="amit">Amit</option>
+                            <option value="dev">Dev</option>
+                            <option value="kabir">Kabir</option>
+                        </optgroup>
+                        <optgroup label="Female Voices">
+                            <option value="ritu">Ritu</option>
+                            <option value="priya">Priya</option>
+                            <option value="neha">Neha</option>
+                            <option value="pooja">Pooja</option>
+                            <option value="kavya">Kavya</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="controls">
+                    <button id="callBtn" class="primary">
+                        <span class="icon">📞</span>
+                        Call Now
+                    </button>
+                    <button id="endBtn" class="danger hidden">
+                        <span class="icon">🚫</span>
+                        End Call
+                    </button>
+                </div>
+
+                <div id="status" class="status-box hidden">
+                    <span class="dot"></span>
+                    <span id="statusText">Ready</span>
+                </div>
+            </main>
+
+            <footer>
+                <p>Powered by LiveKit, Groq & Sarvam.ai</p>
+            </footer>
+        </div>
+
+        <div id="activeCalls" class="active-calls hidden">
+            <h3>Active Sessions</h3>
+            <ul id="callsList"></ul>
+        </div>
+    </div>
+
+    <script>
+        const phoneNumberInput = document.getElementById('phoneNumber');
+        const callBtn = document.getElementById('callBtn');
+        const endBtn = document.getElementById('endBtn');
+        const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const callsList = document.getElementById('callsList');
+        const activeCallsDiv = document.getElementById('activeCalls');
+
+        let currentRoom = null;
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.classList.remove('hidden', 'success', 'error', 'pulse');
+            statusText.textContent = message;
+            if (type === 'pulse') statusDiv.classList.add('pulse');
+            else if (type) statusDiv.classList.add(type);
+        }
+
+        callBtn.addEventListener('click', async () => {
+            const phoneNumber = phoneNumberInput.value.trim();
+            if (!phoneNumber) {
+                alert('Please enter a phone number');
+                return;
+            }
+
+            try {
+                callBtn.disabled = true;
+                updateStatus('Initiating call...', 'pulse');
+
+                const systemPrompt = document.getElementById('systemPrompt').value.trim();
+                const voiceId = document.getElementById('voiceId').value;
+
+                const response = await fetch('/api/call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber, systemPrompt, voiceId })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 429) {
+                    // Call already in progress
+                    updateStatus('⚠️ Call already active', 'error');
+                    setTimeout(() => updateStatus('End current call first'), 2000);
+                    callBtn.disabled = false;
+                    return;
+                }
+
+                if (data.success) {
+                    currentRoom = data.roomName;
+                    updateStatus('Call active', 'success');
+                    callBtn.classList.add('hidden');
+                    endBtn.classList.remove('hidden');
+                    refreshCalls();
+                } else {
+                    throw new Error(data.error || 'Failed to start call');
+                }
+            } catch (error) {
+                updateStatus(error.message, 'error');
+                callBtn.disabled = false;
+            }
+        });
+
+        endBtn.addEventListener('click', async () => {
+            if (!currentRoom) return;
+
+            try {
+                endBtn.disabled = true;
+                updateStatus('Ending call...', 'pulse');
+
+                await fetch('/api/end-call', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomName: currentRoom })
+                });
+
+                currentRoom = null;
+                updateStatus('Call ended');
+                setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+
+                callBtn.classList.remove('hidden');
+                callBtn.disabled = false;
+                endBtn.classList.add('hidden');
+                endBtn.disabled = false;
+                refreshCalls();
+            } catch (error) {
+                updateStatus('Failed to end call', 'error');
+                endBtn.disabled = false;
+            }
+        });
+
+        async function refreshCalls() {
+            try {
+                const response = await fetch('/api/calls');
+                const data = await response.json();
+
+                if (data.activeCalls && data.activeCalls.length > 0) {
+                    activeCallsDiv.classList.remove('hidden');
+                    callsList.innerHTML = data.activeCalls.map(room => `
+                        <li>
+                            <span>${room}</span>
+                            <button onclick="endSpecificCall('${room}')">End</button>
+                        </li>
+                    `).join('');
+                } else {
+                    activeCallsDiv.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to fetch active calls', error);
+            }
+        }
+
+        window.endSpecificCall = async (roomName) => {
+            await fetch('/api/end-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roomName })
+            });
+            if (roomName === currentRoom) {
+                currentRoom = null;
+                callBtn.classList.remove('hidden');
+                endBtn.classList.add('hidden');
+                updateStatus('Call ended');
+            }
+            refreshCalls();
+        };
+
+        // Poll for active calls
+        setInterval(refreshCalls, 5000);
+        refreshCalls();
+    </script>
+</body>
+
+</html>

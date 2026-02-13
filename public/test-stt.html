@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepgram STT Test</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .transcript-container {
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+        }
+
+        .interim {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .final {
+            color: #f8fafc;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .v-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            margin-right: 8px;
+        }
+
+        .v-indicator.active {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>🎙️ Deepgram STT Test</h1>
+                <p>Verify that AI is listening correctly</p>
+            </header>
+            <main>
+                <div class="controls">
+                    <button id="startBtn" class="primary">Start Listening</button>
+                    <button id="stopBtn" class="secondary" disabled>Stop</button>
+                </div>
+                <div id="status" class="status-box">
+                    <span id="indicator" class="v-indicator"></span>
+                    <span id="statusText">Ready</span>
+                </div>
+                <div class="transcript-container" id="transcriptOutput">
+                    <p style="color: #94a3b8;">Transcription will appear here...</p>
+                </div>
+            </main>
+            <footer>
+                <p><a href="/" style="color: #6366f1; text-decoration: none;">← Back to Dialer</a></p>
+            </footer>
+        </div>
+    </div>
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusText = document.getElementById('statusText');
+        const indicator = document.getElementById('indicator');
+        const output = document.getElementById('transcriptOutput');
+        let socket, audioContext, processor, source;
+
+        function updateStatus(message, active = false) {
+            statusText.textContent = message;
+            if (active) indicator.classList.add('active');
+            else indicator.classList.remove('active');
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                socket = new WebSocket(`${protocol}//${window.location.host}/ws/test-stt`);
+                socket.onopen = () => { updateStatus('Connected to Deepgram', true); socket.send(JSON.stringify({ type: 'start' })); };
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'transcript') handleTranscript(data.text, data.isFinal);
+                    else if (data.type === 'error') updateStatus('Error: ' + data.message, false);
+                };
+                socket.onclose = () => { updateStatus('Disconnected', false); stopRecording(); };
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                source = audioContext.createMediaStreamSource(stream);
+                processor = audioContext.createScriptProcessor(4096, 1, 1);
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                processor.onaudioprocess = (e) => {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+                        }
+                        socket.send(pcmData.buffer);
+                    }
+                };
+                startBtn.disabled = true; stopBtn.disabled = false; output.innerHTML = '';
+            } catch (err) { updateStatus('Error: ' + err.message, false); }
+        }
+
+        function stopRecording() {
+            if (processor) processor.disconnect();
+            if (source) source.disconnect();
+            if (audioContext) audioContext.close();
+            if (socket) socket.close();
+            startBtn.disabled = false; stopBtn.disabled = true; updateStatus('Ready', false);
+        }
+
+        let interimSpan = null;
+        function handleTranscript(text, isFinal) {
+            if (isFinal) {
+                if (interimSpan) interimSpan.remove();
+                interimSpan = null;
+                const p = document.createElement('p'); p.className = 'final'; p.textContent = text;
+                output.appendChild(p); output.scrollTop = output.scrollHeight;
+            } else {
+                if (!interimSpan) {
+                    interimSpan = document.createElement('span'); interimSpan.className = 'interim';
+                    output.appendChild(interimSpan);
+                }
+                interimSpan.textContent = text + '...'; output.scrollTop = output.scrollHeight;
+            }
+        }
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+    </script>
+</body>
+
+</html>

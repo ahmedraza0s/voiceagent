@@ -1,0 +1,44 @@
+{
+  "name": "ai-voice-agent-backend",
+  "version": "1.0.0",
+  "description": "Production-ready real-time AI Voice Agent backend with LiveKit, Deepgram, Groq, and Sarvam.ai",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "livekit",
+    "voice-agent",
+    "deepgram",
+    "groq",
+    "sarvam",
+    "sip",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@deepgram/sdk": "^3.8.0",
+    "@types/express-ws": "^3.0.6",
+    "axios": "^1.7.9",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.7",
+    "drachtio-client": "^0.1.4",
+    "drachtio-srf": "^5.0.18",
+    "express": "^5.2.1",
+    "express-ws": "^5.0.2",
+    "groq-sdk": "^0.8.0",
+    "livekit-server-sdk": "^2.15.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,77 @@
+# System Requirements and Dependencies
+
+## Node.js Dependencies (from package.json)
+
+### Production Dependencies
+- @deepgram/sdk@^3.8.0          # Deepgram Speech-to-Text SDK
+- axios@^1.7.9                  # HTTP client for API calls
+- dotenv@^16.4.7                # Environment variable management
+- groq-sdk@^0.8.0               # Groq LLM SDK
+- livekit-server-sdk@^2.9.1     # LiveKit real-time audio streaming
+- winston@^3.17.0               # Production logging
+
+### Development Dependencies
+- @types/node@^22.10.2          # TypeScript types for Node.js
+- tsx@^4.19.2                   # TypeScript execution
+- typescript@^5.7.2             # TypeScript compiler
+
+## System Requirements
+
+### Runtime
+- Node.js: >= 18.0.0
+- npm: >= 8.0.0
+- Operating System: Linux, macOS, or Windows
+- Memory: Minimum 512MB RAM (2GB recommended)
+- Network: Stable internet connection for streaming
+
+### External Services (API Keys Required)
+1. LiveKit Cloud (https://cloud.livekit.io/)
+   - WebSocket URL
+   - API Key
+   - API Secret
+
+2. Deepgram (https://console.deepgram.com/)
+   - API Key for Speech-to-Text
+
+3. Groq (https://console.groq.com/)
+   - API Key for LLM (llama-3.3-70b-versatile)
+
+4. Sarvam.ai
+   - API Key for Text-to-Speech
+
+5. SIP Trunk (Optional - for phone calls)
+   - SIP Username
+   - SIP Password
+   - SIP Domain
+   - SIP Port (typically 5060)
+   - Caller ID
+
+## Installation Commands
+
+```bash
+# Install all dependencies
+npm install
+
+# Install specific dependencies manually (if needed)
+npm install @deepgram/sdk axios dotenv groq-sdk livekit-server-sdk winston
+
+# Install dev dependencies
+npm install --save-dev @types/node tsx typescript
+```
+
+## Port Requirements
+
+- Port 3000: Application HTTP server (configurable via PORT env var)
+- Port 5060: SIP (if using SIP trunk)
+- Outbound: HTTPS (443) and WSS (443) for API calls
+
+## Optional Tools
+
+### For Production Deployment
+- PM2: Process manager (npm install -g pm2)
+- Nginx: Reverse proxy (optional)
+- Docker: Containerization (optional)
+
+### For Development
+- Git: Version control
+- VS Code: Recommended IDE with TypeScript support

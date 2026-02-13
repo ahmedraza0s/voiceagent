@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Test</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <header>
+                <h1>🧪 AI Voice Test</h1>
+                <p>Test the AI pipeline without phone calls</p>
+            </header>
+
+            <main>
+                <div class="input-group">
+                    <textarea id="testInput" rows="3"
+                        placeholder="Type something for the AI to respond to..."></textarea>
+                </div>
+
+                <div class="controls">
+                    <button id="testBtn" class="primary">
+                        <span class="icon">🤖</span>
+                        Test AI Response
+                    </button>
+                </div>
+
+                <div id="status" class="status-box hidden">
+                    <span class="dot"></span>
+                    <span id="statusText">Ready</span>
+                </div>
+
+                <div id="response" class="response-box hidden">
+                    <h3>AI Response:</h3>
+                    <p id="responseText"></p>
+                </div>
+            </main>
+
+            <footer>
+                <p><a href="/">← Back to Dialer</a></p>
+                <p style="margin-top: 8px; font-size: 0.75rem;">This tests STT→LLM→TTS pipeline</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const testInput = document.getElementById('testInput');
+        const testBtn = document.getElementById('testBtn');
+        const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const responseDiv = document.getElementById('response');
+        const responseText = document.getElementById('responseText');
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.classList.remove('hidden', 'success', 'error', 'pulse');
+            statusText.textContent = message;
+            if (type === 'pulse') statusDiv.classList.add('pulse');
+            else if (type) statusDiv.classList.add(type);
+        }
+
+        testBtn.addEventListener('click', async () => {
+            const text = testInput.value.trim();
+            if (!text) {
+                alert('Please enter some text');
+                return;
+            }
+
+            try {
+                testBtn.disabled = true;
+                responseDiv.classList.add('hidden');
+                updateStatus('Processing...', 'pulse');
+
+                const response = await fetch('/api/test-voice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    updateStatus('AI responded!', 'success');
+                    responseText.textContent = data.response;
+                    responseDiv.classList.remove('hidden');
+                } else {
+                    throw new Error(data.error || 'Test failed');
+                }
+            } catch (error) {
+                updateStatus(error.message, 'error');
+            } finally {
+                testBtn.disabled = false;
+            }
+        });
+
+        // Example prompts
+        const examples = [
+            "Hello, how are you?",
+            "Tell me about yourself",
+            "What can you help me with?"
+        ];
+
+        let exampleIndex = 0;
+        testInput.placeholder = examples[exampleIndex];
+
+        setInterval(() => {
+            exampleIndex = (exampleIndex + 1) % examples.length;
+            testInput.placeholder = examples[exampleIndex];
+        }, 3000);
+    </script>
+
+    <style>
+        textarea {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .response-box {
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .response-box h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .response-box p {
+            color: var(--text);
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</body>
+
+</html>
