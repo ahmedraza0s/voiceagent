@@ -73,25 +73,11 @@ class VoiceAgentApp {
         pipeline.on('responseComplete', () =>
             logger.info('AI response complete', { roomName }));
 
-        // Audio Bridge: SIP -> AI
-        const audioHandler = (data: { callId: string; pcm16: Buffer }) => {
-            if (data.callId === roomName) {
-                pipeline.processAudio(data.pcm16);
-            }
-        };
-        this.sipService.on('audio', audioHandler);
-
-        // Audio Bridge: AI -> SIP
-        pipeline.on('audioChunk', (audio: Buffer) => {
-            this.sipService.sendAudio(audio);
-        });
+        // Audio Bridge: Now handled internally by LiveKitAgent in pipeline.ts
+        // We don't need to manually bridge events here anymore.
 
         pipeline.on('stopped', async () => {
             logger.info('Pipeline stopped', { roomName });
-
-            // Cleanup: remove audio listener
-            this.sipService.off('audio', audioHandler);
-
             this.activePipelines.delete(roomName);
             await this.sipService.deleteRoom(roomName);
         });

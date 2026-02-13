@@ -1,7 +1,9 @@
+
 import { DeepgramSTTService } from '../stt/deepgram';
 import { GroqLLMService } from '../llm/groq';
 import { SarvamTTSService } from '../tts/sarvam';
 import { LiveKitRoomService } from '../rooms/livekit';
+import { LiveKitAgent } from '../rooms/livekit-agent';
 import logger from '../../utils/logger';
 import { EventEmitter } from 'events';
 
@@ -9,15 +11,13 @@ import { EventEmitter } from 'events';
  * Conversation Pipeline
  * Orchestrates the complete streaming pipeline:
  * Audio → STT → LLM → TTS → Audio
- * 
- * Note: For production, you would connect a LiveKit client participant
- * to handle actual audio streaming. This demonstrates the pipeline logic.
  */
 export class ConversationPipeline extends EventEmitter {
     private stt: DeepgramSTTService;
     private llm: GroqLLMService;
     private tts: SarvamTTSService;
     private room: LiveKitRoomService;
+    private agent: LiveKitAgent;
     private isProcessing: boolean = false;
     private roomName: string | null = null;
 
@@ -27,6 +27,7 @@ export class ConversationPipeline extends EventEmitter {
         this.llm = new GroqLLMService();
         this.tts = new SarvamTTSService();
         this.room = new LiveKitRoomService();
+        this.agent = new LiveKitAgent();
 
         this.setupPipeline();
     }
@@ -35,15 +36,21 @@ export class ConversationPipeline extends EventEmitter {
      * Set up the complete streaming pipeline
      */
     private setupPipeline(): void {
-        // Step 1: Handle transcripts from STT
+        // Step 1: Handle audio from LiveKit Agent (User speaking)
+        this.agent.on('audio', (pcmBuffer: Buffer) => {
+            if (this.stt) {
+                this.stt.sendAudio(pcmBuffer);
+            }
+        });
+
+        // Step 2: Handle transcripts from STT
         this.stt.on('transcript', async (transcript: string) => {
             await this.handleTranscript(transcript);
         });
 
         // Handle interim results for barge-in detection
         this.stt.on('interim', (interim: string) => {
-            // If the user starts speaking, we should signal a potential barge-in
-            // This will clear buffered audio even if the TTS generation has finished
+            // If the user starts speaking, signal barge-in
             if (this.tts.playing || this.isProcessing) {
                 logger.info('User speaking - signaling potential barge-in', { interim });
                 this.tts.stop();
@@ -51,21 +58,24 @@ export class ConversationPipeline extends EventEmitter {
             }
         });
 
-        // Step 2-4: Handle errors from services
-        this.stt.on('error', (error: any) => {
-            logger.error('STT service error', { error: error.message || error });
-            this.emit('error', error);
-        });
+        // Handle errors
+        this.stt.on('error', (error: any) => this.handleError('STT', error));
+        this.tts.on('error', (error: any) => this.handleError('TTS', error));
 
-        this.tts.on('error', (error: any) => {
-            logger.error('TTS service error', { error: error.message || error });
-            this.emit('error', error);
+        // Agent events
+        this.agent.on('disconnected', () => {
+            logger.info('Agent disconnected from room');
+            this.stop(); // Stop pipeline if agent disconnects
         });
+    }
+
+    private handleError(service: string, error: any): void {
+        logger.error(`${service} service error`, { error: error.message || error });
+        this.emit('error', error);
     }
 
     /**
      * Trigger an initial greeting from the AI
-     * Called when the call is first connected
      */
     async sayHello(): Promise<void> {
         logger.info('👋 Triggering initial AI greeting');
@@ -87,17 +97,17 @@ export class ConversationPipeline extends EventEmitter {
             logger.info('Processing transcript', { transcript });
             this.emit('transcriptReceived', transcript);
 
-            // Step 2 & 3: Get streaming response from LLM
+            // Step 3: Get streaming response from LLM
             const llmStream = this.llm.streamResponse(transcript);
 
-            // Step 4 & 5: Convert LLM response to speech
+            // Step 4: Convert LLM response to speech
             const ttsStream = this.tts.streamSpeech(llmStream);
 
-            // Step 6: Stream audio chunks
-            // In production, these would be published to LiveKit
+            // Step 5: Stream audio chunks to LiveKit
             for await (const audioChunk of ttsStream) {
-                // Placeholder: In production, publish to LiveKit participant
-                logger.debug('Audio chunk ready for streaming', { size: audioChunk.length });
+                // Publish to LiveKit participant
+                // logger.debug('Audio chunk ready for streaming');
+                await this.agent.pushAudio(audioChunk);
                 this.emit('audioChunk', audioChunk);
             }
 
@@ -105,11 +115,7 @@ export class ConversationPipeline extends EventEmitter {
             this.emit('responseComplete');
 
         } catch (error: any) {
-            logger.error('Error in conversation pipeline', {
-                message: error.message,
-                stack: error.stack
-            });
-            this.emit('error', error);
+            this.handleError('Pipeline', error);
         } finally {
             this.isProcessing = false;
         }
@@ -120,32 +126,21 @@ export class ConversationPipeline extends EventEmitter {
      */
     async start(roomName: string, systemPrompt?: string, voiceId?: string): Promise<void> {
         try {
-            logger.info('Starting conversation pipeline', {
-                roomName,
-                hasCustomPrompt: !!systemPrompt,
-                voiceId
-            });
+            logger.info('Starting conversation pipeline', { roomName });
             this.roomName = roomName;
 
-            if (systemPrompt) {
-                this.llm.setSystemPrompt(systemPrompt);
-            }
-
-            if (voiceId) {
-                this.tts.setSpeaker(voiceId);
-            }
-
-            // Verify room exists
-            const exists = await this.room.roomExists(roomName);
-            if (!exists) {
-                await this.room.createRoom(roomName);
-            }
+            if (systemPrompt) this.llm.setSystemPrompt(systemPrompt);
+            if (voiceId) this.tts.setSpeaker(voiceId);
 
             // Connect to Deepgram STT
             await this.stt.connect();
 
+            // Connect Agent to LiveKit Room
+            // We use a slight delay or retry logic if the room isn't ready immediately?
+            // Usually createRoom is fast.
+            await this.agent.connect(roomName, 'AI Assistant');
+
             logger.info('Conversation pipeline ready');
-            logger.info('NOTE: For production, connect a LiveKit participant to handle audio I/O');
             this.emit('ready');
 
         } catch (error) {
@@ -155,27 +150,16 @@ export class ConversationPipeline extends EventEmitter {
     }
 
     /**
-     * Process audio from external source (e.g., LiveKit participant)
-     */
-    processAudio(audioBuffer: Buffer): void {
-        this.stt.sendAudio(audioBuffer);
-    }
-
-    /**
      * Stop the conversation pipeline
      */
     async stop(): Promise<void> {
         try {
             logger.info('Stopping conversation pipeline', { roomName: this.roomName });
 
-            // Stop TTS if playing
             this.tts.stop();
-
-            // Disconnect from services
             await this.stt.disconnect();
-
-            // Clear LLM history
             this.llm.clearHistory();
+            await this.agent.disconnect();
 
             logger.info('Conversation pipeline stopped');
             this.emit('stopped');
@@ -190,5 +174,10 @@ export class ConversationPipeline extends EventEmitter {
      */
     getHistory(): any[] {
         return this.llm.getHistory();
+    }
+
+    // Legacy method support if needed, or remove
+    processAudio(audioBuffer: Buffer): void {
+        // No-op, handled by agent event
     }
 }

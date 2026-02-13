@@ -14,6 +14,7 @@ function validateEnv(): void {
         'DEEPGRAM_API_KEY',
         'GROQ_API_KEY',
         'SARVAM_API_KEY',
+        'SARVAM_API_KEY',
     ];
 
     const missing = required.filter((key) => !process.env[key]);
@@ -37,6 +38,7 @@ export const config = {
         url: process.env.LIVEKIT_URL!,
         apiKey: process.env.LIVEKIT_API_KEY!,
         apiSecret: process.env.LIVEKIT_API_SECRET!,
+        sipTrunkId: process.env.LIVEKIT_SIP_TRUNK_ID,
     },
 
     // Deepgram Configuration (STT)
