@@ -87,6 +87,95 @@ export class LiveKitSIPManager {
     }
 
     /**
+     * Create an authenticated outbound SIP trunk
+     */
+    async createAuthenticatedOutboundTrunk(
+        name: string,
+        address: string,
+        numbers: string[],
+        authUsername: string,
+        authPassword: string
+    ) {
+        try {
+            logger.info('Creating Authenticated Outbound SIP Trunk', { name, address, numbers, authUsername });
+            const options: CreateSipOutboundTrunkOptions = {
+                transport: SIPTransport.SIP_TRANSPORT_UDP,
+                authUsername,
+                authPassword,
+            };
+            const trunk = await this.createOutboundTrunk(name, address, numbers, options);
+            logger.info('✅ Authenticated Outbound Trunk created', { id: trunk.sipTrunkId });
+            return trunk;
+        } catch (error: any) {
+            logger.error('Failed to create authenticated outbound trunk', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Get or create default trunk from environment config
+     */
+    async getOrCreateDefaultTrunk(): Promise<string> {
+        try {
+            const trunks = await this.listTrunks();
+            const existingTrunk = trunks.outbound.find(t => t.name === 'VivPhone-Default');
+
+            if (existingTrunk) {
+                logger.info('Using existing default trunk', { id: existingTrunk.sipTrunkId });
+                return existingTrunk.sipTrunkId;
+            }
+
+            // Create new trunk from env config
+            logger.info('Creating default trunk from environment config');
+            const trunk = await this.createAuthenticatedOutboundTrunk(
+                'VivPhone-Default',
+                `${config.sip.domain}:${config.sip.port}`,
+                [config.sip.callerId],
+                config.sip.username,
+                config.sip.password
+            );
+
+            return trunk.sipTrunkId;
+        } catch (error: any) {
+            logger.error('Failed to get or create default trunk', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Create a SIP participant in a room (make outbound call)
+     */
+    async createSipParticipant(
+        roomName: string,
+        trunkId: string,
+        phoneNumber: string,
+        participantIdentity?: string
+    ) {
+        try {
+            logger.info('Creating SIP Participant', { roomName, trunkId, phoneNumber });
+
+            const participant = await this.client.createSipParticipant(
+                trunkId,
+                phoneNumber,
+                roomName,
+                {
+                    participantIdentity: participantIdentity || `sip-${phoneNumber}`,
+                    participantName: phoneNumber,
+                }
+            );
+
+            logger.info('✅ SIP Participant created', {
+                participantId: participant.participantId,
+                sipCallId: participant.sipCallId
+            });
+            return participant;
+        } catch (error: any) {
+            logger.error('Failed to create SIP participant', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
      * Create a SIP dispatch rule (Direct)
      */
     async createDirectDispatchRule(name: string, roomName: string, trunkIds?: string[]) {

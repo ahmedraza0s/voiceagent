@@ -130,6 +130,14 @@ class VoiceAgentApp {
     async deleteSipDispatchRule(id: string) {
         return await this.sipManager.deleteDispatchRule(id);
     }
+
+    async setupDefaultTrunk() {
+        return await this.sipManager.getOrCreateDefaultTrunk();
+    }
+
+    async createAuthenticatedOutboundTrunk(name: string, address: string, numbers: string[], authUsername: string, authPassword: string) {
+        return await this.sipManager.createAuthenticatedOutboundTrunk(name, address, numbers, authUsername, authPassword);
+    }
 }
 
 const { app } = expressWs(express());
@@ -214,6 +222,22 @@ app.get('/api/sip/env-config', (_req, res) => {
     });
 });
 
+// POST: Setup default trunk from environment config
+app.post('/api/sip/setup-trunk', async (_req, res) => {
+    try {
+        logger.info('Setting up default SIP trunk from environment config');
+        const trunkId = await voiceApp.setupDefaultTrunk();
+        return res.json({
+            success: true,
+            trunkId,
+            message: 'Default SIP trunk created successfully'
+        });
+    } catch (error: any) {
+        logger.error('Failed to setup default trunk', { error: error.message });
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 // GET: List all trunks
 app.get('/api/sip/trunks', async (_req, res) => {
     try {
@@ -228,10 +252,13 @@ app.get('/api/sip/trunks', async (_req, res) => {
 app.post('/api/sip/outbound', async (req, res) => {
     const { name, address, numbers, authUsername, authPassword } = req.body;
     try {
-        const trunk = await voiceApp.createOutboundTrunk(name, address, numbers, {
+        const trunk = await voiceApp.createAuthenticatedOutboundTrunk(
+            name,
+            address,
+            numbers,
             authUsername,
             authPassword
-        });
+        );
         return res.json({ success: true, trunk });
     } catch (error: any) {
         return res.status(500).json({ error: error.message });

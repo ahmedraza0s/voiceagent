@@ -1,9 +1,7 @@
 
 import { EventEmitter } from 'events';
-import { Buffer } from 'node:buffer';
-import { DirectSIPDialer } from './direct-dialer';
 import { LiveKitRoomService } from '../rooms/livekit';
-import { LiveKitPhoneBridge } from '../rooms/livekit-phone-bridge';
+import { LiveKitSIPManager } from './livekit-sip-manager';
 import logger from '../../utils/logger';
 
 export interface SIPCallOptions {
@@ -11,88 +9,61 @@ export interface SIPCallOptions {
 }
 
 /**
- * SIP Service - Manages Local SIP Gateway
- * 1. Creates LiveKit Room
- * 2. Dials Phone via DirectSIPDialer (Local SIP)
- * 3. Bridges Audio via LiveKitPhoneBridge
+ * SIP Service - Manages LiveKit SIP Integration
+ * Uses LiveKit's native SIP service instead of custom dialer
  */
 export class SIPService extends EventEmitter {
-    private dialer: DirectSIPDialer;
     private roomService: LiveKitRoomService;
-    private bridges: Map<string, LiveKitPhoneBridge> = new Map(); // roomName -> Bridge
-    private sipToRoom: Map<string, string> = new Map(); // sipCallId -> roomName
+    private sipManager: LiveKitSIPManager;
+    private activeCalls: Map<string, any> = new Map(); // roomName -> call info
 
     constructor() {
         super();
-        this.dialer = new DirectSIPDialer();
         this.roomService = new LiveKitRoomService();
-
-        this.setupDialerEvents();
-    }
-
-    private setupDialerEvents(): void {
-        this.dialer.on('callConnected', ({ callId, phoneNumber }) => {
-            const roomName = this.sipToRoom.get(callId);
-            if (roomName) {
-                logger.info('✅ SIP Call Connected, ready for AI', { roomName, callId });
-                this.emit('callConnected', { callId: roomName, phoneNumber });
-            }
-        });
-
-        this.dialer.on('callEnded', ({ callId }) => {
-            const roomName = this.sipToRoom.get(callId);
-            if (roomName) {
-                logger.info('SIP Call Ended, cleaning up room', { roomName });
-                this.endCall(roomName);
-            }
-        });
-
-        this.dialer.on('callFailed', ({ callId, error }) => {
-            const roomName = this.sipToRoom.get(callId);
-            if (roomName) {
-                logger.error('SIP Call Failed', { roomName, error });
-                this.endCall(roomName);
-            }
-        });
-
-        // Audio from Phone (SIP) -> LiveKit Room
-        this.dialer.on('audio', ({ callId, pcm16 }) => {
-            const roomName = this.sipToRoom.get(callId);
-            if (roomName) {
-                const bridge = this.bridges.get(roomName);
-                if (bridge) {
-                    bridge.pushAudio(pcm16);
-                }
-            }
-        });
+        this.sipManager = new LiveKitSIPManager();
     }
 
     /**
-     * Make an outbound call via Local SIP Gateway
+     * Make an outbound call via LiveKit SIP
      */
     async makeOutboundCall(phoneNumber: string): Promise<string> {
         try {
             const roomName = `call-${Date.now()}`;
-            logger.info('🔄 Initiating Local SIP Gateway call', { phoneNumber, roomName });
+            logger.info('🔄 Initiating LiveKit SIP call', { phoneNumber, roomName });
 
             // 1. Create LiveKit Room
             await this.roomService.createRoom(roomName);
 
-            // 2. Start SIP Call
-            const sipCallId = await this.dialer.makeCall(phoneNumber);
-            this.sipToRoom.set(sipCallId, roomName);
+            // 2. Get or create default SIP trunk
+            const trunkId = await this.sipManager.getOrCreateDefaultTrunk();
 
-            // 3. Connect Bridge (Phone Participant)
-            const bridge = new LiveKitPhoneBridge();
-            await bridge.connect(roomName, phoneNumber);
-            this.bridges.set(roomName, bridge);
+            // 3. Create SIP Participant (LiveKit handles the call and audio)
+            const participant = await this.sipManager.createSipParticipant(
+                roomName,
+                trunkId,
+                phoneNumber
+            );
 
-            // 4. Audio from LiveKit Room -> Phone (SIP)
-            bridge.on('audio', (pcm16: Buffer) => {
-                // TODO: In the future, target specific callId.
-                // For now, DirectSIPDialer broadcasts to all.
-                this.dialer.sendAudio(pcm16);
+            // Track active call
+            this.activeCalls.set(roomName, {
+                phoneNumber,
+                trunkId,
+                participantId: participant.participantId,
+                sipCallId: participant.sipCallId,
+                startTime: new Date()
             });
+
+            logger.info('✅ LiveKit SIP call initiated', {
+                roomName,
+                phoneNumber,
+                participantId: participant.participantId
+            });
+
+            // Emit call connected event (LiveKit handles the actual connection)
+            // In a real implementation, you'd listen to LiveKit webhooks for actual connection status
+            setTimeout(() => {
+                this.emit('callConnected', { callId: roomName, phoneNumber });
+            }, 2000);
 
             return roomName;
         } catch (error: any) {
@@ -108,31 +79,17 @@ export class SIPService extends EventEmitter {
         try {
             logger.info('Ending call sequence', { roomName });
 
-            // 1. Find SIP Call ID
-            let sipCallId: string | undefined;
-            for (const [id, room] of this.sipToRoom.entries()) {
-                if (room === roomName) {
-                    sipCallId = id;
-                    break;
-                }
+            const callInfo = this.activeCalls.get(roomName);
+            if (callInfo) {
+                logger.info('Call info', callInfo);
+                this.activeCalls.delete(roomName);
             }
 
-            // 2. End SIP Call
-            if (sipCallId) {
-                await this.dialer.endCall(sipCallId);
-                this.sipToRoom.delete(sipCallId);
-            }
-
-            // 3. Disconnect Bridge
-            const bridge = this.bridges.get(roomName);
-            if (bridge) {
-                await bridge.disconnect();
-                this.bridges.delete(roomName);
-            }
-
-            // 4. Delete Room
+            // Delete the room (this will disconnect all participants including SIP)
             await this.roomService.deleteRoom(roomName);
             this.emit('callEnded', { callId: roomName });
+
+            logger.info('✅ Call ended successfully', { roomName });
 
         } catch (error: any) {
             logger.error('Error ending call', { error: error.message, roomName });
@@ -147,16 +104,41 @@ export class SIPService extends EventEmitter {
         return this.endCall(roomName);
     }
 
-    // Deprecated / Unused in this flow
+    /**
+     * Handle inbound call (placeholder for future implementation)
+     */
     async handleInboundCall(callId: string): Promise<string> {
+        logger.info('Inbound call handling not yet implemented', { callId });
         return callId;
     }
 
-    sendAudio(_pcm16: Buffer): void {
-        // No-op
+    /**
+     * Stop audio playback (no-op for LiveKit managed SIP)
+     */
+    stopAudio(): void {
+        // LiveKit handles audio management internally
+        logger.debug('stopAudio called (handled by LiveKit)');
     }
 
-    stopAudio(): void {
-        this.dialer.stopAudio();
+    /**
+     * Send audio (no-op for LiveKit managed SIP)
+     */
+    sendAudio(_pcm16: Buffer): void {
+        // LiveKit handles audio routing internally
+        logger.debug('sendAudio called (handled by LiveKit)');
+    }
+
+    /**
+     * Get active calls
+     */
+    getActiveCalls(): string[] {
+        return Array.from(this.activeCalls.keys());
+    }
+
+    /**
+     * Get call information
+     */
+    getCallInfo(roomName: string): any {
+        return this.activeCalls.get(roomName);
     }
 }
