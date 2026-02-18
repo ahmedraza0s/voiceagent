@@ -18,6 +18,8 @@ export class RegistrationManager extends EventEmitter {
     private config: RegistrationConfig;
     private refreshTimer: NodeJS.Timeout | null = null;
     private callId: string;
+    private detectedPort: number | null = null;
+    private detectedIp: string | null = null;
 
     constructor(sipStack: SipStack, config: RegistrationConfig) {
         super();
@@ -30,7 +32,31 @@ export class RegistrationManager extends EventEmitter {
     }
 
     start() {
+        // Option to clear stale registrations first?
+        // this.unregisterAll(); 
         this.register();
+    }
+
+    unregisterAll() {
+        logger.info('Clearing all active SIP registrations for this account');
+        const request: any = {
+            method: 'REGISTER',
+            uri: `sip:${this.config.domain}`,
+            headers: {
+                to: { uri: `sip:${this.config.username}@${this.config.domain}` },
+                from: { uri: `sip:${this.config.username}@${this.config.domain}`, params: { tag: uuidv4() } },
+                'call-id': uuidv4(),
+                cseq: { method: 'REGISTER', seq: 1 },
+                contact: [{ uri: '*' }],
+                expires: 0,
+                'max-forwards': 70,
+                via: []
+            }
+        };
+
+        this.sipStack.send(request, (response: any) => {
+            logger.info('Unregister response received', { status: response.status });
+        });
     }
 
     stop() {
@@ -41,6 +67,9 @@ export class RegistrationManager extends EventEmitter {
     }
 
     private register(authHeader?: string) {
+        const port = this.detectedPort || this.sipStack.config.port;
+        const ip = this.detectedIp || this.sipStack.config.publicIp || '127.0.0.1';
+
         const request: any = {
             method: 'REGISTER',
             uri: `sip:${this.config.domain}`,
@@ -48,13 +77,20 @@ export class RegistrationManager extends EventEmitter {
                 to: { uri: `sip:${this.config.username}@${this.config.domain}` },
                 from: { uri: `sip:${this.config.username}@${this.config.domain}`, params: { tag: uuidv4() } },
                 'call-id': this.callId,
-                cseq: { method: 'REGISTER', seq: 1 },
-                contact: [{ uri: `sip:${this.config.username}@${this.config.domain}` }], // Need actual IP here
+                cseq: { method: 'REGISTER', seq: authHeader ? 2 : 1 },
+                contact: [{ uri: `sip:${this.config.username}@${ip}:${port}` }],
                 expires: this.config.expires,
                 'max-forwards': 70,
                 via: [] // 'sip' lib fills this
             }
         };
+
+        logger.debug('Sending Registration Request', {
+            method: request.method,
+            uri: request.uri,
+            contact: request.headers.contact[0].uri,
+            callId: request.headers['call-id']
+        });
 
         if (authHeader) {
             request.headers.authorization = authHeader;
@@ -62,8 +98,38 @@ export class RegistrationManager extends EventEmitter {
         }
 
         this.sipStack.send(request, (response: any) => {
+            logger.debug('Registration Response Received', {
+                status: response.status,
+                reason: response.reason,
+                headers: response.headers
+            });
+
             if (response.status >= 200 && response.status < 300) {
                 logger.info(`Successfully Registered with ${this.config.domain}`);
+
+                // Inspect Via header for NAT info
+                const via = Array.isArray(response.headers.via) ? response.headers.via[0] : response.headers.via;
+                if (via && via.params) {
+                    const received = via.params.received;
+                    const rport = via.params.rport;
+                    if (received || rport) {
+                        logger.info(`NAT Detected: provider sees us as ${received || 'unknown'}:${rport || 'unknown'}`);
+                        // If the port they see is different from what we think, we might need to re-register
+                        if (rport && (parseInt(rport) !== (this.detectedPort || this.sipStack.config.port))) {
+                            logger.warn(`Port mismatch! Provider sees ${rport}, we reported ${this.detectedPort || this.sipStack.config.port}. Attempting to fix...`);
+                            this.detectedPort = parseInt(rport);
+                            this.detectedIp = received;
+
+                            // Re-register with correct info after a small delay
+                            setTimeout(() => {
+                                this.unregisterAll();
+                                this.register();
+                            }, 2000);
+                            return;
+                        }
+                    }
+                }
+
                 this.scheduleRefresh();
                 this.emit('registered');
             } else if (response.status === 401 && !authHeader) {

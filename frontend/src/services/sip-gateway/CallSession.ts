@@ -36,12 +36,24 @@ export class CallSession {
         this.sipStack.send(trying);
 
         // 2. Parsed Remote SDP to get audio port/ip
+        let remotePort = 0;
+        let remoteAddress = '';
+        const roomName = `room-${this.callId.substring(0, 8)}`;
+
         if (request.content) {
-            this.remoteSdp = sdpTransform.parse(request.content);
-            const audioMedia = this.remoteSdp.media.find((m: any) => m.type === 'audio');
-            if (audioMedia) {
-                logger.info(`Remote Audio: ${audioMedia.port} (${audioMedia.protocol})`);
-                await this.mediaBridge.bridgeToRoom('inbound-room', audioMedia.port, request.headers.contact[0].uri); // Simplified contact extraction
+            try {
+                this.remoteSdp = sdpTransform.parse(request.content);
+                const audioMedia = this.remoteSdp.media.find((m: any) => m.type === 'audio');
+                if (audioMedia) {
+                    remotePort = audioMedia.port;
+                    remoteAddress = this.remoteSdp.connection?.ip || this.remoteSdp.origin?.address;
+                    logger.info(`Remote Audio: ${remoteAddress}:${remotePort} (${audioMedia.protocol})`);
+
+                    // Trigger bridge with unique room name
+                    await this.mediaBridge.bridgeToRoom(roomName, remotePort, remoteAddress);
+                }
+            } catch (sdpError) {
+                logger.error('Failed to parse remote SDP', { error: sdpError });
             }
         }
 
@@ -53,9 +65,23 @@ export class CallSession {
         };
         this.sipStack.send(ringing);
 
-        // 4. Send OK (Answer)
-        // Need to generate Local SDP here pointing to our MediaBridge IP/Port
-        const answerSdp = 'v=0\r\n...'; // Placeholder
+        // 4. Generate Local SDP and Send OK (Answer)
+        const localIp = this.sipStack.config.publicIp || '127.0.0.1';
+        const localMediaPort = (this.mediaBridge as any).port; // Internal access for signaling
+
+        const answerSdp = [
+            'v=0',
+            `o=- ${Math.floor(Math.random() * 1000000)} ${Math.floor(Math.random() * 1000000)} IN IP4 ${localIp}`,
+            's=-',
+            `c=IN IP4 ${localIp}`,
+            't=0 0',
+            `m=audio ${localMediaPort} RTP/AVP 0 101`,
+            'a=rtpmap:0 PCMU/8000',
+            'a=rtpmap:101 telephone-event/8000',
+            'a=fmtp:101 0-15',
+            'a=sendrecv',
+            ''
+        ].join('\r\n');
 
         const ok = {
             status: 200,
@@ -63,13 +89,15 @@ export class CallSession {
             headers: {
                 ...trying.headers,
                 'content-type': 'application/sdp',
-                contact: [{ uri: `sip:me@myserver.com` }] // Need actual IP/Contact logic
+                contact: [{ uri: `sip:${this.sipStack.config.publicIp || '127.0.0.1'}:${this.sipStack.config.port}` }]
             },
             content: answerSdp
         };
-        this.sipStack.send(ok);
+        this.sipStack.send(ok, (res: any) => {
+            logger.debug(`Answer response: ${res.status}`);
+        });
 
-        logger.info(`Call ${this.callId} answered`);
+        logger.info(`Call ${this.callId} answered. Room: ${roomName}`);
     }
 
     end() {

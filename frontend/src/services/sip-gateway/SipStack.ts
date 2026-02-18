@@ -10,7 +10,7 @@ export interface SipStackConfig {
 }
 
 export class SipStack extends EventEmitter {
-    private config: SipStackConfig;
+    public config: SipStackConfig;
 
     constructor(config: SipStackConfig) {
         super();
@@ -22,8 +22,8 @@ export class SipStack extends EventEmitter {
             port: this.config.port,
             checkUri: false, // Don't check URI, allow all
             logger: {
-                send: (message: string) => logger.debug(`SIP SEND: ${message}`),
-                recv: (message: string) => logger.debug(`SIP RECV: ${message}`),
+                send: (message: any) => logger.debug('SIP SEND', { message }),
+                recv: (message: any) => logger.debug('SIP RECV', { message }),
                 error: (e: Error) => logger.error(`SIP ERROR: ${e.message}`)
             }
         }, (request: any) => {

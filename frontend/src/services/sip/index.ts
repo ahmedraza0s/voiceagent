@@ -108,8 +108,19 @@ export class SIPService extends EventEmitter {
      * Handle inbound call (placeholder for future implementation)
      */
     async handleInboundCall(callId: string): Promise<string> {
-        logger.info('Inbound call handling not yet implemented', { callId });
-        return callId;
+        try {
+            const roomName = `room-${callId.substring(0, 8)}`;
+            logger.info('🔄 Preparing LiveKit room for inbound call', { callId, roomName });
+
+            // 1. Create LiveKit Room
+            await this.roomService.createRoom(roomName);
+
+            logger.info('✅ Room created for inbound call', { roomName });
+            return roomName;
+        } catch (error: any) {
+            logger.error('Failed to prepare room for inbound call', { error: error.message, callId });
+            throw error;
+        }
     }
 
     /**

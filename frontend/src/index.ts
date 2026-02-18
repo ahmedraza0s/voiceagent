@@ -24,6 +24,14 @@ class VoiceAgentApp {
         this.sipService = new SIPService();
         this.sipManager = new LiveKitSIPManager();
         this.sipGateway = new SIPGateway();
+
+        // Wire inbound calls
+        this.sipGateway.on('inboundCall', (data) => {
+            this.handleInboundCall(data.callId).catch(err => {
+                logger.error('Error handling inbound call', { error: err.message, callId: data.callId });
+            });
+        });
+
         this.sipGateway.start();
     }
 
@@ -62,6 +70,10 @@ class VoiceAgentApp {
             // Dynamic identity not support for anonymous inbound calls yet
             await pipeline.start(roomName);
             this.activePipelines.set(roomName, pipeline);
+
+            // Trigger greeting for inbound call
+            logger.info('📞 Inbound call joined room, triggering greeting');
+            await pipeline.sayHello();
         } catch (error) {
             logger.error('Failed to handle inbound call', { error });
             throw error;

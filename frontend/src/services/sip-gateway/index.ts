@@ -1,4 +1,4 @@
-
+import { EventEmitter } from 'events';
 import { SipStack } from './SipStack';
 import { MediaBridge } from './MediaBridge';
 import { RegistrationManager } from './RegistrationManager';
@@ -6,13 +6,14 @@ import { CallSession } from './CallSession';
 import logger from '../../utils/logger';
 
 
-export class SIPGateway {
+export class SIPGateway extends EventEmitter {
     private sipStack: SipStack;
     private mediaBridge: MediaBridge;
     private registrationManager: RegistrationManager;
     private activeCalls: Map<string, CallSession> = new Map();
 
     constructor() {
+        super();
         // Initialize components
         this.sipStack = new SipStack({
             port: parseInt(process.env.SIP_PORT || '5060'),
@@ -81,8 +82,10 @@ export class SIPGateway {
 
     private handleInvite(request: any) {
         const callId = request.headers['call-id'];
+        logger.info(`Received inbound INVITE: ${callId}`);
         const session = new CallSession(this.sipStack, this.mediaBridge, callId);
         this.activeCalls.set(callId, session);
+        this.emit('inboundCall', { callId, request, session });
         session.handleInvite(request);
     }
 
