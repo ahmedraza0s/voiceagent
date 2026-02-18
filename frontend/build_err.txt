@@ -1,0 +1,9 @@
+﻿src/services/conversation/pipeline.ts(19,13): error TS6133: 'room' is declared but its value is never read.
+src/services/conversation/pipeline.ts(180,18): error TS6133: 'audioBuffer' is declared but its value is never read.
+src/services/rooms/livekit-agent.ts(7,5): error TS6133: 'Track' is declared but its value is never read.
+src/services/rooms/livekit-agent.ts(30,13): error TS6133: 'participantName' is declared but its value is never read.
+src/services/rooms/livekit-agent.ts(39,70): error TS6133: 'publication' is declared but its value is never read.
+src/services/sip-gateway/CallSession.ts(13,13): error TS6133: 'localSdp' is declared but its value is never read.
+src/services/sip-gateway/index.ts(7,1): error TS6133: 'config' is declared but its value is never read.
+src/services/sip-gateway/SipStack.ts(2,1): error TS6133: 'dgram' is declared but its value is never read.
+src/services/sip-gateway/SipStack.ts(6,7): error TS6133: 'uuidv4' is declared but its value is never read.

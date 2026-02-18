@@ -4,7 +4,8 @@ import {
     RoomEvent,
     RemoteParticipant,
     RemoteTrack,
-    Track,
+
+
     AudioStream,
     AudioSource,
     AudioFrame,
@@ -27,7 +28,7 @@ export class LiveKitAgent extends EventEmitter {
     private localAudioTrack: LocalAudioTrack | null = null;
     private audioStream: AudioStream | null = null;
     private isConnected: boolean = false;
-    private participantName: string = 'AI Agent';
+
 
     constructor() {
         super();
@@ -36,7 +37,7 @@ export class LiveKitAgent extends EventEmitter {
     }
 
     private setupRoomEvents(): void {
-        this.room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: any, participant: RemoteParticipant) => {
+        this.room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication: any, participant: RemoteParticipant) => {
             if (track.kind === TrackKind.KIND_AUDIO) {
                 logger.info('🎤 Audio track subscribed', { participant: participant.identity });
                 this.handleAudioTrack(track as any);
@@ -85,7 +86,7 @@ export class LiveKitAgent extends EventEmitter {
      * Connect to the room
      */
     async connect(roomName: string, participantName: string): Promise<void> {
-        this.participantName = participantName;
+
 
         const at = new AccessToken(config.livekit.apiKey, config.livekit.apiSecret, {
             identity: `ai-agent-${roomName}`,

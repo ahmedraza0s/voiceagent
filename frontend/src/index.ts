@@ -9,6 +9,7 @@ import { LiveKitSIPManager } from './services/sip/livekit-sip-manager';
 import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
+import { SIPGateway } from './services/sip-gateway';
 
 /**
  * AI Voice Agent Backend
@@ -16,11 +17,14 @@ import { SarvamTTSService } from './services/tts/sarvam';
 class VoiceAgentApp {
     private sipService: SIPService;
     private sipManager: LiveKitSIPManager;
+    private sipGateway: SIPGateway;
     private activePipelines: Map<string, ConversationPipeline> = new Map();
 
     constructor() {
         this.sipService = new SIPService();
         this.sipManager = new LiveKitSIPManager();
+        this.sipGateway = new SIPGateway();
+        this.sipGateway.start();
     }
 
     // ... existing code ...

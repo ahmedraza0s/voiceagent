@@ -2,7 +2,7 @@
 import { DeepgramSTTService } from '../stt/deepgram';
 import { GroqLLMService } from '../llm/groq';
 import { SarvamTTSService } from '../tts/sarvam';
-import { LiveKitRoomService } from '../rooms/livekit';
+
 import { LiveKitAgent } from '../rooms/livekit-agent';
 import logger from '../../utils/logger';
 import { EventEmitter } from 'events';
@@ -16,7 +16,6 @@ export class ConversationPipeline extends EventEmitter {
     private stt: DeepgramSTTService;
     private llm: GroqLLMService;
     private tts: SarvamTTSService;
-    private room: LiveKitRoomService;
     private agent: LiveKitAgent;
     private isProcessing: boolean = false;
     private roomName: string | null = null;
@@ -26,7 +25,6 @@ export class ConversationPipeline extends EventEmitter {
         this.stt = new DeepgramSTTService();
         this.llm = new GroqLLMService();
         this.tts = new SarvamTTSService();
-        this.room = new LiveKitRoomService();
         this.agent = new LiveKitAgent();
 
         this.setupPipeline();
@@ -177,7 +175,7 @@ export class ConversationPipeline extends EventEmitter {
     }
 
     // Legacy method support if needed, or remove
-    processAudio(audioBuffer: Buffer): void {
+    processAudio(_audioBuffer: Buffer): void {
         // No-op, handled by agent event
     }
 }
