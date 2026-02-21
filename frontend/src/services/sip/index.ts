@@ -1,7 +1,6 @@
 
 import { EventEmitter } from 'events';
-import { LiveKitRoomService } from '../rooms/livekit';
-import { LiveKitSIPManager } from './livekit-sip-manager';
+import { FreeSwitchService } from '../freeswitch/FreeSwitchService';
 import logger from '../../utils/logger';
 
 export interface SIPCallOptions {
@@ -9,63 +8,44 @@ export interface SIPCallOptions {
 }
 
 /**
- * SIP Service - Manages LiveKit SIP Integration
- * Uses LiveKit's native SIP service instead of custom dialer
+ * SIP Service - Manages FreeSWITCH SIP Integration
+ * Delegates all call control to FreeSwitchService (drachtio-srf / ESL).
  */
 export class SIPService extends EventEmitter {
-    private roomService: LiveKitRoomService;
-    private sipManager: LiveKitSIPManager;
-    private activeCalls: Map<string, any> = new Map(); // roomName -> call info
+    private freeSwitchService: FreeSwitchService;
+    private activeCalls: Map<string, any> = new Map(); // callId -> call info
 
-    constructor() {
+    constructor(freeSwitchService: FreeSwitchService) {
         super();
-        this.roomService = new LiveKitRoomService();
-        this.sipManager = new LiveKitSIPManager();
+        this.freeSwitchService = freeSwitchService;
+
+        // Forward FreeSWITCH events
+        this.freeSwitchService.on('callConnected', (data) => {
+            this.emit('callConnected', data);
+        });
+
+        this.freeSwitchService.on('callEnded', (data) => {
+            this.activeCalls.delete(data.callId);
+            this.emit('callEnded', data);
+        });
     }
 
     /**
-     * Make an outbound call via LiveKit SIP
+     * Make an outbound call via FreeSWITCH
      */
-    async makeOutboundCall(phoneNumber: string): Promise<string> {
+    async makeOutboundCall(phoneNumber: string, localSdp: string, callId?: string): Promise<string> {
         try {
-            const roomName = `call-${Date.now()}`;
-            logger.info('🔄 Initiating LiveKit SIP call', { phoneNumber, roomName });
+            logger.info('🔄 Initiating FreeSWITCH outbound call', { phoneNumber, callId });
 
-            // 1. Create LiveKit Room
-            await this.roomService.createRoom(roomName);
+            const finalCallId = await this.freeSwitchService.makeOutboundCall(phoneNumber, localSdp, callId);
 
-            // 2. Get or create default SIP trunk
-            const trunkId = await this.sipManager.getOrCreateDefaultTrunk();
-
-            // 3. Create SIP Participant (LiveKit handles the call and audio)
-            const participant = await this.sipManager.createSipParticipant(
-                roomName,
-                trunkId,
-                phoneNumber
-            );
-
-            // Track active call
-            this.activeCalls.set(roomName, {
+            this.activeCalls.set(finalCallId, {
                 phoneNumber,
-                trunkId,
-                participantId: participant.participantId,
-                sipCallId: participant.sipCallId,
-                startTime: new Date()
+                startTime: new Date(),
             });
 
-            logger.info('✅ LiveKit SIP call initiated', {
-                roomName,
-                phoneNumber,
-                participantId: participant.participantId
-            });
-
-            // Emit call connected event (LiveKit handles the actual connection)
-            // In a real implementation, you'd listen to LiveKit webhooks for actual connection status
-            setTimeout(() => {
-                this.emit('callConnected', { callId: roomName, phoneNumber });
-            }, 2000);
-
-            return roomName;
+            logger.info('✅ FreeSWITCH outbound call initiated', { callId: finalCallId, phoneNumber });
+            return finalCallId;
         } catch (error: any) {
             logger.error('Failed to make outbound call', { error: error.message, phoneNumber });
             throw error;
@@ -73,83 +53,46 @@ export class SIPService extends EventEmitter {
     }
 
     /**
-     * End an active call
+     * End/hang up a call
      */
-    async endCall(roomName: string): Promise<void> {
+    async endCall(callId: string): Promise<void> {
         try {
-            logger.info('Ending call sequence', { roomName });
-
-            const callInfo = this.activeCalls.get(roomName);
-            if (callInfo) {
-                logger.info('Call info', callInfo);
-                this.activeCalls.delete(roomName);
-            }
-
-            // Delete the room (this will disconnect all participants including SIP)
-            await this.roomService.deleteRoom(roomName);
-            this.emit('callEnded', { callId: roomName });
-
-            logger.info('✅ Call ended successfully', { roomName });
-
+            logger.info('Ending call', { callId });
+            await this.freeSwitchService.hangup(callId);
+            this.activeCalls.delete(callId);
+            this.emit('callEnded', { callId });
+            logger.info('✅ Call ended', { callId });
         } catch (error: any) {
-            logger.error('Error ending call', { error: error.message, roomName });
+            logger.error('Error ending call', { error: error.message, callId });
             throw error;
         }
     }
 
     /**
-     * Alias for endCall
+     * Alias for endCall (backward compat)
      */
-    async deleteRoom(roomName: string): Promise<void> {
-        return this.endCall(roomName);
+    async deleteRoom(callId: string): Promise<void> {
+        return this.endCall(callId);
     }
 
     /**
-     * Handle inbound call (placeholder for future implementation)
-     */
-    async handleInboundCall(callId: string): Promise<string> {
-        try {
-            const roomName = `room-${callId.substring(0, 8)}`;
-            logger.info('🔄 Preparing LiveKit room for inbound call', { callId, roomName });
-
-            // 1. Create LiveKit Room
-            await this.roomService.createRoom(roomName);
-
-            logger.info('✅ Room created for inbound call', { roomName });
-            return roomName;
-        } catch (error: any) {
-            logger.error('Failed to prepare room for inbound call', { error: error.message, callId });
-            throw error;
-        }
-    }
-
-    /**
-     * Stop audio playback (no-op for LiveKit managed SIP)
+     * Stop audio playback (no-op - handled by pipeline TTS stop)
      */
     stopAudio(): void {
-        // LiveKit handles audio management internally
-        logger.debug('stopAudio called (handled by LiveKit)');
+        logger.debug('stopAudio called (handled by TTS pipeline)');
     }
 
     /**
-     * Send audio (no-op for LiveKit managed SIP)
-     */
-    sendAudio(_pcm16: Buffer): void {
-        // LiveKit handles audio routing internally
-        logger.debug('sendAudio called (handled by LiveKit)');
-    }
-
-    /**
-     * Get active calls
+     * Get active call IDs
      */
     getActiveCalls(): string[] {
         return Array.from(this.activeCalls.keys());
     }
 
     /**
-     * Get call information
+     * Get call info
      */
-    getCallInfo(roomName: string): any {
-        return this.activeCalls.get(roomName);
+    getCallInfo(callId: string): any {
+        return this.activeCalls.get(callId);
     }
 }

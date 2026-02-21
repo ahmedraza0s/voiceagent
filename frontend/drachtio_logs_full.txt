@@ -1,0 +1,1349 @@
+﻿docker : 2026-02-20 
+20:43:12.893985 Starting drachtio 
+version v0.9.5
+At line:1 char:1
++ docker logs drachtio-server 
+*>&1 | Out-File -FilePath 
+'drachtio_logs_ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : Not 
+   Specified: (2026-02-20 20:4..  
+  . version v0.9.5:String) [],    
+ RemoteException
+    + FullyQualifiedErrorId : Nat 
+   iveCommandError
+ 
+2026-02-20 20:43:12.894148 
+Logging threshold:                
+     5
+2026-02-20 20:43:12.894186 
+DrachtioController::run: Main 
+thread id: 128402237579008
+2026-02-20 20:43:12.894249 
+DrachtioController::run listening 
+for applications on tcp port 
+11444 only
+2026-02-20 20:43:12.904795 ClientC
+ontroller::ClientController done 
+setting tls options: 
+2026-02-20 20:43:12.904864 Client 
+controller initializing with tcp 
+only
+2026-02-20 20:43:12.904904 Client 
+controller thread id: 
+128402237579008
+2026-02-20 20:43:12.905182 Client 
+controller thread id: 
+128402237552320
+2026-02-20 20:43:12.905297 
+ClientController::threadFunc - 
+ClientController: io_context run 
+loop started (or restarted)
+2026-02-20 20:43:12.905227 
+ClientController::start_accept_tcp
+2026-02-20 20:43:12.905525 
+DrachtioController::run - 
+blacklist checking config
+2026-02-20 20:43:12.905581 
+DrachtioController::run - 
+blacklist is disabled
+2026-02-20 20:43:12.905594 
+Prometheus support disabled
+2026-02-20 20:43:12.905631 tcp 
+keep alives will be sent to 
+clients every 45 seconds
+2026-02-20 20:43:12.906011 
+DrachtioController::run: starting 
+sip stack on sip:0.0.0.0:5060
+2026-02-20 20:43:12.906096 SipTran
+sport::getBindableContactUri: 
+sip:0.0.0.0:5060
+2026-02-20 20:43:12.906409 
+nta.c:979 nta_agent_create() 
+nta_agent_create: initialized 
+hash tables
+2026-02-20 20:43:12.906661 
+tport.c:529 tport_tcreate() 
+tport_create(): 0x58c68f2ae300
+2026-02-20 20:43:12.906987 
+nta.c:2401 
+agent_create_master_transport() 
+nta: master transport created
+2026-02-20 20:43:12.907601 
+tport.c:1667 tport_bind_server() 
+tport_bind_server(0x58c68f2ae300) 
+to */0.0.0.0:5060
+2026-02-20 20:43:12.907979 
+tport.c:1738 tport_bind_server() t
+port_bind_server(0x58c68f2ae300): 
+calling tport_listen for udp
+2026-02-20 20:43:12.908057 
+tport.c:651 tport_alloc_primary() 
+tport_alloc_primary(0x58c68f2ae300
+): new primary tport 
+0x58c68f34c000
+2026-02-20 20:43:12.908605 
+tport.c:780 tport_listen() 
+tport_listen(0x58c68f34c000): 
+listening at udp/127.0.0.1:5060
+2026-02-20 20:43:12.908650 
+tport.c:1738 tport_bind_server() t
+port_bind_server(0x58c68f2ae300): 
+calling tport_listen for tcp
+2026-02-20 20:43:12.908663 
+tport.c:651 tport_alloc_primary() 
+tport_alloc_primary(0x58c68f2ae300
+): new primary tport 
+0x58c68f34c280
+2026-02-20 20:43:12.908832 
+tport.c:780 tport_listen() 
+tport_listen(0x58c68f34c280): 
+listening at tcp/127.0.0.1:5060
+2026-02-20 20:43:12.908874 
+tport.c:1738 tport_bind_server() t
+port_bind_server(0x58c68f2ae300): 
+calling tport_listen for ws
+2026-02-20 20:43:12.908890 
+tport.c:651 tport_alloc_primary() 
+tport_alloc_primary(0x58c68f2ae300
+): new primary tport 
+0x58c68f34c500
+2026-02-20 20:43:12.908972 
+tport.c:780 tport_listen() 
+tport_listen(0x58c68f34c500): 
+listening at ws/127.0.0.1:5060
+2026-02-20 20:43:12.909018 
+nta.c:2355 nta_agent_add_tport() 
+nta: bound to 
+(0.0.0.0:5060;transport=*)
+2026-02-20 20:43:12.909082 
+nta.c:2497 agent_init_via() nta: 
+agent_init_via: SIP/2.0/udp 
+127.0.0.1 (*)
+2026-02-20 20:43:12.909310 
+nta.c:2497 agent_init_via() nta: 
+agent_init_via: SIP/2.0/tcp 
+127.0.0.1 (*)
+2026-02-20 20:43:12.909350 
+nta.c:2497 agent_init_via() nta: 
+agent_init_via: SIP/2.0/ws 
+127.0.0.1 (*)
+2026-02-20 20:43:12.909392 
+nta.c:2369 nta_agent_add_tport() 
+nta: Via fields initialized
+2026-02-20 20:43:12.909648 
+nta.c:2377 nta_agent_add_tport() 
+nta: Contact header created
+2026-02-20 20:43:12.909691 
+nta.c:986 nta_agent_create() 
+nta_agent_create: initialized 
+transports
+2026-02-20 20:43:12.909703 
+nta.c:992 nta_agent_create() 
+nta_agent_create: initialized 
+random identifiers
+2026-02-20 20:43:12.909709 
+nta.c:998 nta_agent_create() 
+nta_agent_create: initialized 
+timer
+2026-02-20 20:43:12.909829 
+nta.c:1008 nta_agent_create() 
+nta_agent_create: initialized 
+resolver
+2026-02-20 20:43:12.910374 
+SipTransport::addTransports - set 
+UDP send/recv buffer size to 
+4194304 bytes
+2026-02-20 20:43:12.910423 
+SipTransport::addTransports - 
+creating transport: 
+0x58c68f34c000: udp/127.0.0.1:5060
+2026-02-20 20:43:12.910885 
+SipTransport::addTransports - 
+creating transport: 
+0x58c68f34c280: tcp/127.0.0.1:5060
+2026-02-20 20:43:12.911352 
+SipTransport::addTransports - 
+creating transport: 
+0x58c68f34c500: ws/127.0.0.1:5060
+2026-02-20 20:43:12.911812 
+SipTransport::logTransports - 
+there are : 3 transports
+2026-02-20 20:43:12.911881 
+SipTransport::logTransports - 
+ws/127.0.0.1:5060 
+(sip:0.0.0.0:5060, external-ip: , 
+local-net: 127.0.0.1/32)
+2026-02-20 20:43:12.911894 
+SipTransport::logTransports - 
+tcp/127.0.0.1:5060 
+(sip:0.0.0.0:5060, external-ip: , 
+local-net: 127.0.0.1/32)
+2026-02-20 20:43:12.911901 
+SipTransport::logTransports - 
+udp/127.0.0.1:5060 
+(sip:0.0.0.0:5060, external-ip: , 
+local-net: 127.0.0.1/32), mtu 
+size: 65535
+2026-02-20 20:43:12.912139 
+DrachtioController::run - sip 
+timers: T1: 500ms, T2: 4000ms, 
+T4: 5000ms, T1X64: 32000ms
+2026-02-20 20:43:12.912186 
+Starting sofia event loop in main 
+thread: 128402237579008
+2026-02-20 20:43:42.928526 Drachti
+oController::processWatchdogTimer
+2026-02-20 20:43:42.928791 size 
+of hash table for server-side 
+transactions                  31
+2026-02-20 20:43:42.928843 size 
+of hash table for client-side 
+transactions                  31
+2026-02-20 20:43:42.928861 size 
+of hash table for dialogs         
+                          31
+2026-02-20 20:43:42.929127 number 
+of server-side transactions in 
+the hash table             0
+2026-02-20 20:43:42.929164 number 
+of client-side transactions in 
+the hash table             0
+2026-02-20 20:43:42.929184 number 
+of dialogs in the hash table      
+                        0
+2026-02-20 20:43:42.929261 number 
+of sip messages received          
+                        0
+2026-02-20 20:43:42.929415 number 
+of sip messages sent              
+                        0
+2026-02-20 20:43:42.929461 number 
+of sip requests received          
+                        0
+2026-02-20 20:43:42.929480 number 
+of sip requests sent              
+                        0
+2026-02-20 20:43:42.929496 number 
+of bad sip messages received      
+                        0
+2026-02-20 20:43:42.929511 number 
+of bad sip requests received      
+                        0
+2026-02-20 20:43:42.929525 number 
+of bad sip requests dropped       
+                        0
+2026-02-20 20:43:42.929540 number 
+of bad sip reponses dropped       
+                        0
+2026-02-20 20:43:42.929554 number 
+of client transactions created    
+                        0
+2026-02-20 20:43:42.929569 number 
+of server transactions created    
+                        0
+2026-02-20 20:43:42.929583 number 
+of in-dialog server transactions 
+created                  0
+2026-02-20 20:43:42.929597 number 
+of server transactions that have 
+received ack             0
+2026-02-20 20:43:42.929612 number 
+of server transactions that have 
+received cancel          0
+2026-02-20 20:43:42.929626 number 
+of requests that were processed 
+stateless                 0
+2026-02-20 20:43:42.929640 number 
+of requests converted to 
+transactions by message callback 0
+2026-02-20 20:43:42.929654 number 
+of responses without matching 
+request                     0
+2026-02-20 20:43:42.929670 number 
+of successful responses missing 
+INVITE client transaction 0
+2026-02-20 20:43:42.929690 number 
+of requests merged by UAS         
+                        0
+2026-02-20 20:43:42.929716 number 
+of SIP responses sent by stack    
+                        0
+2026-02-20 20:43:42.929744 number 
+of SIP requests retransmitted by 
+stack                    0
+2026-02-20 20:43:42.929775 number 
+of SIP responses retransmitted by 
+stack                   0
+2026-02-20 20:43:42.929819 number 
+of retransmitted SIP requests 
+received by stack           0
+2026-02-20 20:43:42.929846 number 
+of SIP client transactions that 
+has timeout               0
+2026-02-20 20:43:42.929873 number 
+of SIP server transactions that 
+has timeout               0
+2026-02-20 20:43:42.929976 
+SipDiaSD_LoglogController storage 
+counts
+2026-02-20 20:43:42.930265 
+----------------------------------
+2026-02-20 20:43:42.930333 IIP 
+size:                             
+                           0
+2026-02-20 20:43:42.930377 
+StableDialogs total size:         
+                               0
+2026-02-20 20:43:42.930398 
+StableDialogs uac:                
+                               0
+2026-02-20 20:43:42.930414 
+StableDialogs uas:                
+                               0
+2026-02-20 20:43:42.930429 
+m_mapTransactionId2Irq size:      
+                               0
+2026-02-20 20:43:42.930444 number 
+of outgoing transactions held for 
+timerD:                 0
+2026-02-20 20:43:42.930459 number 
+of outgoing transactions waiting 
+for ACK from app:        0
+2026-02-20 20:43:42.930476 RIP 
+size:                             
+                           0
+2026-02-20 20:43:42.930496 
+general queue size:               
+                               0
+2026-02-20 20:43:42.930512 timer 
+A queue size:                     
+                         0
+2026-02-20 20:43:42.930636 timer 
+B queue size:                     
+                         0
+2026-02-20 20:43:42.930677 timer 
+C queue size:                     
+                         0
+2026-02-20 20:43:42.930705 timer 
+D queue size:                     
+                         0
+2026-02-20 20:43:42.930730 timer 
+E queue size:                     
+                         0
+2026-02-20 20:43:42.930751 timer 
+F queue size:                     
+                         0
+2026-02-20 20:43:42.930773 timer 
+G queue size:                     
+                         0
+2026-02-20 20:43:42.930789 timer 
+K queue size:                     
+                         0
+2026-02-20 20:43:42.930808 
+ClientController storage counts
+2026-02-20 20:43:42.930828 
+----------------------------------
+2026-02-20 20:43:42.930852 
+m_clients size:                   
+                               0
+2026-02-20 20:43:42.930996 
+m_services size:                  
+                               0
+2026-02-20 20:43:42.931066 
+m_request_types size:             
+                               0
+2026-02-20 20:43:42.931117 
+m_map_of_request_type_offsets 
+size:                             
+ 0
+2026-02-20 20:43:42.931177 
+m_mapDialogs size:                
+                               0
+2026-02-20 20:43:42.931219 
+m_mapNetTransactions size:        
+                               0
+2026-02-20 20:43:42.931250 
+m_mapAppTransactions size:        
+                               0
+2026-02-20 20:43:42.931277 
+m_mapApiRequests size:            
+                               0
+2026-02-20 20:43:42.931304 
+m_mapDialogId2Appname size:       
+                               0
+2026-02-20 20:43:42.931335 
+PendingRequestController storage 
+counts
+2026-02-20 20:43:42.931366 
+----------------------------------
+2026-02-20 20:43:42.931396 
+m_mapCallId2Invite size:          
+                               0
+2026-02-20 20:43:42.931440 
+m_mapTxnId2Invite size:           
+                               0
+2026-02-20 20:43:42.931474 
+SipProxyController storage counts
+2026-02-20 20:43:42.931505 
+----------------------------------
+2026-02-20 20:43:42.931532 
+m_mapCallId2Proxy size:           
+                               0
+2026-02-20 20:43:42.931854 
+m_mapNonce2Challenge size:        
+                               0
+2026-02-20 20:43:42.931918 
+general queue size:               
+                               0
+2026-02-20 20:43:42.931967 timer 
+A queue size:                     
+                         0
+2026-02-20 20:43:42.932006 timer 
+B queue size:                     
+                         0
+2026-02-20 20:43:42.932029 timer 
+C queue size:                     
+                         0
+2026-02-20 20:43:42.932045 timer 
+D queue size:                     
+                         0
+2026-02-20 20:43:42.932065 timer 
+E queue size:                     
+                         0
+2026-02-20 20:43:42.932081 timer 
+F queue size:                     
+                         0
+2026-02-20 20:43:42.932096 timer 
+G queue size:                     
+                         0
+2026-02-20 20:43:42.932111 timer 
+K queue size:                     
+                         0
+2026-02-20 20:43:42.932128 
+m_mapUri2InvalidData size:        
+                               0
+2026-02-20 20:44:12.938097 Drachti
+oController::processWatchdogTimer
+2026-02-20 20:44:12.938221 size 
+of hash table for server-side 
+transactions                  31
+2026-02-20 20:44:12.938242 size 
+of hash table for client-side 
+transactions                  31
+2026-02-20 20:44:12.938249 size 
+of hash table for dialogs         
+                          31
+2026-02-20 20:44:12.938256 number 
+of server-side transactions in 
+the hash table             0
+2026-02-20 20:44:12.938263 number 
+of client-side transactions in 
+the hash table             0
+2026-02-20 20:44:12.938270 number 
+of dialogs in the hash table      
+                        0
+2026-02-20 20:44:12.938277 number 
+of sip messages received          
+                        0
+2026-02-20 20:44:12.938284 number 
+of sip messages sent              
+                        0
+2026-02-20 20:44:12.938290 number 
+of sip requests received          
+                        0
+2026-02-20 20:44:12.938296 number 
+of sip requests sent              
+                        0
+2026-02-20 20:44:12.938302 number 
+of bad sip messages received      
+                        0
+2026-02-20 20:44:12.938308 number 
+of bad sip requests received      
+                        0
+2026-02-20 20:44:12.938315 number 
+of bad sip requests dropped       
+                        0
+2026-02-20 20:44:12.938321 number 
+of bad sip reponses dropped       
+                        0
+2026-02-20 20:44:12.938328 number 
+of client transactions created    
+                        0
+2026-02-20 20:44:12.938334 number 
+of server transactions created    
+                        0
+2026-02-20 20:44:12.938341 number 
+of in-dialog server transactions 
+created                  0
+2026-02-20 20:44:12.938349 number 
+of server transactions that have 
+received ack             0
+2026-02-20 20:44:12.938355 number 
+of server transactions that have 
+received cancel          0
+2026-02-20 20:44:12.938362 number 
+of requests that were processed 
+stateless                 0
+2026-02-20 20:44:12.938370 number 
+of requests converted to 
+transactions by message callback 0
+2026-02-20 20:44:12.938377 number 
+of responses without matching 
+request                     0
+2026-02-20 20:44:12.938388 number 
+of successful responses missing 
+INVITE client transaction 0
+2026-02-20 20:44:12.938396 number 
+of requests merged by UAS         
+                        0
+2026-02-20 20:44:12.938410 number 
+of SIP responses sent by stack    
+                        0
+2026-02-20 20:44:12.938419 number 
+of SIP requests retransmitted by 
+stack                    0
+2026-02-20 20:44:12.938427 number 
+of SIP responses retransmitted by 
+stack                   0
+2026-02-20 20:44:12.938436 number 
+of retransmitted SIP requests 
+received by stack           0
+2026-02-20 20:44:12.938443 number 
+of SIP client transactions that 
+has timeout               0
+2026-02-20 20:44:12.938452 number 
+of SIP server transactions that 
+has timeout               0
+2026-02-20 20:44:12.938460 
+SipDiaSD_LoglogController storage 
+counts
+2026-02-20 20:44:12.938469 
+----------------------------------
+2026-02-20 20:44:12.938551 IIP 
+size:                             
+                           0
+2026-02-20 20:44:12.938572 
+StableDialogs total size:         
+                               0
+2026-02-20 20:44:12.938581 
+StableDialogs uac:                
+                               0
+2026-02-20 20:44:12.938589 
+StableDialogs uas:                
+                               0
+2026-02-20 20:44:12.938596 
+m_mapTransactionId2Irq size:      
+                               0
+2026-02-20 20:44:12.938603 number 
+of outgoing transactions held for 
+timerD:                 0
+2026-02-20 20:44:12.938610 number 
+of outgoing transactions waiting 
+for ACK from app:        0
+2026-02-20 20:44:12.938618 RIP 
+size:                             
+                           0
+2026-02-20 20:44:12.938630 
+general queue size:               
+                               0
+2026-02-20 20:44:12.938639 timer 
+A queue size:                     
+                         0
+2026-02-20 20:44:12.938651 timer 
+B queue size:                     
+                         0
+2026-02-20 20:44:12.938660 timer 
+C queue size:                     
+                         0
+2026-02-20 20:44:12.938666 timer 
+D queue size:                     
+                         0
+2026-02-20 20:44:12.938673 timer 
+E queue size:                     
+                         0
+2026-02-20 20:44:12.938682 timer 
+F queue size:                     
+                         0
+2026-02-20 20:44:12.938689 timer 
+G queue size:                     
+                         0
+2026-02-20 20:44:12.938696 timer 
+K queue size:                     
+                         0
+2026-02-20 20:44:12.938708 
+ClientController storage counts
+2026-02-20 20:44:12.938717 
+----------------------------------
+2026-02-20 20:44:12.938724 
+m_clients size:                   
+                               0
+2026-02-20 20:44:12.938732 
+m_services size:                  
+                               0
+2026-02-20 20:44:12.938739 
+m_request_types size:             
+                               0
+2026-02-20 20:44:12.938746 
+m_map_of_request_type_offsets 
+size:                             
+ 0
+2026-02-20 20:44:12.938754 
+m_mapDialogs size:                
+                               0
+2026-02-20 20:44:12.938761 
+m_mapNetTransactions size:        
+                               0
+2026-02-20 20:44:12.938767 
+m_mapAppTransactions size:        
+                               0
+2026-02-20 20:44:12.938773 
+m_mapApiRequests size:            
+                               0
+2026-02-20 20:44:12.938779 
+m_mapDialogId2Appname size:       
+                               0
+2026-02-20 20:44:12.938790 
+PendingRequestController storage 
+counts
+2026-02-20 20:44:12.938798 
+----------------------------------
+2026-02-20 20:44:12.938804 
+m_mapCallId2Invite size:          
+                               0
+2026-02-20 20:44:12.938812 
+m_mapTxnId2Invite size:           
+                               0
+2026-02-20 20:44:12.938820 
+SipProxyController storage counts
+2026-02-20 20:44:12.938828 
+----------------------------------
+2026-02-20 20:44:12.938835 
+m_mapCallId2Proxy size:           
+                               0
+2026-02-20 20:44:12.938848 
+m_mapNonce2Challenge size:        
+                               0
+2026-02-20 20:44:12.938857 
+general queue size:               
+                               0
+2026-02-20 20:44:12.938865 timer 
+A queue size:                     
+                         0
+2026-02-20 20:44:12.938877 timer 
+B queue size:                     
+                         0
+2026-02-20 20:44:12.938885 timer 
+C queue size:                     
+                         0
+2026-02-20 20:44:12.938893 timer 
+D queue size:                     
+                         0
+2026-02-20 20:44:12.938902 timer 
+E queue size:                     
+                         0
+2026-02-20 20:44:12.938910 timer 
+F queue size:                     
+                         0
+2026-02-20 20:44:12.938918 timer 
+G queue size:                     
+                         0
+2026-02-20 20:44:12.938925 timer 
+K queue size:                     
+                         0
+2026-02-20 20:44:12.938933 
+m_mapUri2InvalidData size:        
+                               0
+2026-02-20 20:44:42.953612 Drachti
+oController::processWatchdogTimer
+2026-02-20 20:44:42.953694 size 
+of hash table for server-side 
+transactions                  31
+2026-02-20 20:44:42.953705 size 
+of hash table for client-side 
+transactions                  31
+2026-02-20 20:44:42.953709 size 
+of hash table for dialogs         
+                          31
+2026-02-20 20:44:42.953712 number 
+of server-side transactions in 
+the hash table             0
+2026-02-20 20:44:42.953716 number 
+of client-side transactions in 
+the hash table             0
+2026-02-20 20:44:42.953719 number 
+of dialogs in the hash table      
+                        0
+2026-02-20 20:44:42.953722 number 
+of sip messages received          
+                        0
+2026-02-20 20:44:42.953725 number 
+of sip messages sent              
+                        0
+2026-02-20 20:44:42.953728 number 
+of sip requests received          
+                        0
+2026-02-20 20:44:42.953731 number 
+of sip requests sent              
+                        0
+2026-02-20 20:44:42.953734 number 
+of bad sip messages received      
+                        0
+2026-02-20 20:44:42.953737 number 
+of bad sip requests received      
+                        0
+2026-02-20 20:44:42.953741 number 
+of bad sip requests dropped       
+                        0
+2026-02-20 20:44:42.953744 number 
+of bad sip reponses dropped       
+                        0
+2026-02-20 20:44:42.953747 number 
+of client transactions created    
+                        0
+2026-02-20 20:44:42.953750 number 
+of server transactions created    
+                        0
+2026-02-20 20:44:42.953753 number 
+of in-dialog server transactions 
+created                  0
+2026-02-20 20:44:42.953756 number 
+of server transactions that have 
+received ack             0
+2026-02-20 20:44:42.953759 number 
+of server transactions that have 
+received cancel          0
+2026-02-20 20:44:42.953762 number 
+of requests that were processed 
+stateless                 0
+2026-02-20 20:44:42.953765 number 
+of requests converted to 
+transactions by message callback 0
+2026-02-20 20:44:42.953768 number 
+of responses without matching 
+request                     0
+2026-02-20 20:44:42.953771 number 
+of successful responses missing 
+INVITE client transaction 0
+2026-02-20 20:44:42.953775 number 
+of requests merged by UAS         
+                        0
+2026-02-20 20:44:42.953778 number 
+of SIP responses sent by stack    
+                        0
+2026-02-20 20:44:42.953781 number 
+of SIP requests retransmitted by 
+stack                    0
+2026-02-20 20:44:42.953784 number 
+of SIP responses retransmitted by 
+stack                   0
+2026-02-20 20:44:42.953787 number 
+of retransmitted SIP requests 
+received by stack           0
+2026-02-20 20:44:42.953790 number 
+of SIP client transactions that 
+has timeout               0
+2026-02-20 20:44:42.953793 number 
+of SIP server transactions that 
+has timeout               0
+2026-02-20 20:44:42.953797 
+SipDiaSD_LoglogController storage 
+counts
+2026-02-20 20:44:42.953801 
+----------------------------------
+2026-02-20 20:44:42.953805 IIP 
+size:                             
+                           0
+2026-02-20 20:44:42.953810 
+StableDialogs total size:         
+                               0
+2026-02-20 20:44:42.953814 
+StableDialogs uac:                
+                               0
+2026-02-20 20:44:42.953817 
+StableDialogs uas:                
+                               0
+2026-02-20 20:44:42.953822 
+m_mapTransactionId2Irq size:      
+                               0
+2026-02-20 20:44:42.953828 number 
+of outgoing transactions held for 
+timerD:                 0
+2026-02-20 20:44:42.953838 number 
+of outgoing transactions waiting 
+for ACK from app:        0
+2026-02-20 20:44:42.953844 RIP 
+size:                             
+                           0
+2026-02-20 20:44:42.953851 
+general queue size:               
+                               0
+2026-02-20 20:44:42.953859 timer 
+A queue size:                     
+                         0
+2026-02-20 20:44:42.953864 timer 
+B queue size:                     
+                         0
+2026-02-20 20:44:42.953869 timer 
+C queue size:                     
+                         0
+2026-02-20 20:44:42.953872 timer 
+D queue size:                     
+                         0
+2026-02-20 20:44:42.953876 timer 
+E queue size:                     
+                         0
+2026-02-20 20:44:42.953879 timer 
+F queue size:                     
+                         0
+2026-02-20 20:44:42.953884 timer 
+G queue size:                     
+                         0
+2026-02-20 20:44:42.953887 timer 
+K queue size:                     
+                         0
+2026-02-20 20:44:42.953891 
+ClientController storage counts
+2026-02-20 20:44:42.953895 
+----------------------------------
+2026-02-20 20:44:42.953899 
+m_clients size:                   
+                               0
+2026-02-20 20:44:42.953902 
+m_services size:                  
+                               0
+2026-02-20 20:44:42.953905 
+m_request_types size:             
+                               0
+2026-02-20 20:44:42.953908 
+m_map_of_request_type_offsets 
+size:                             
+ 0
+2026-02-20 20:44:42.953912 
+m_mapDialogs size:                
+                               0
+2026-02-20 20:44:42.953916 
+m_mapNetTransactions size:        
+                               0
+2026-02-20 20:44:42.953919 
+m_mapAppTransactions size:        
+                               0
+2026-02-20 20:44:42.953923 
+m_mapApiRequests size:            
+                               0
+2026-02-20 20:44:42.953927 
+m_mapDialogId2Appname size:       
+                               0
+2026-02-20 20:44:42.953931 
+PendingRequestController storage 
+counts
+2026-02-20 20:44:42.953935 
+----------------------------------
+2026-02-20 20:44:42.953938 
+m_mapCallId2Invite size:          
+                               0
+2026-02-20 20:44:42.953945 
+m_mapTxnId2Invite size:           
+                               0
+2026-02-20 20:44:42.953949 
+SipProxyController storage counts
+2026-02-20 20:44:42.953953 
+----------------------------------
+2026-02-20 20:44:42.953958 
+m_mapCallId2Proxy size:           
+                               0
+2026-02-20 20:44:42.953962 
+m_mapNonce2Challenge size:        
+                               0
+2026-02-20 20:44:42.953965 
+general queue size:               
+                               0
+2026-02-20 20:44:42.953969 timer 
+A queue size:                     
+                         0
+2026-02-20 20:44:42.953972 timer 
+B queue size:                     
+                         0
+2026-02-20 20:44:42.953976 timer 
+C queue size:                     
+                         0
+2026-02-20 20:44:42.953979 timer 
+D queue size:                     
+                         0
+2026-02-20 20:44:42.953982 timer 
+E queue size:                     
+                         0
+2026-02-20 20:44:42.953986 timer 
+F queue size:                     
+                         0
+2026-02-20 20:44:42.953989 timer 
+G queue size:                     
+                         0
+2026-02-20 20:44:42.953993 timer 
+K queue size:                     
+                         0
+2026-02-20 20:44:42.953996 
+m_mapUri2InvalidData size:        
+                               0
+2026-02-20 20:45:12.968921 Drachti
+oController::processWatchdogTimer
+2026-02-20 20:45:12.968992 size 
+of hash table for server-side 
+transactions                  31
+2026-02-20 20:45:12.969002 size 
+of hash table for client-side 
+transactions                  31
+2026-02-20 20:45:12.969006 size 
+of hash table for dialogs         
+                          31
+2026-02-20 20:45:12.969010 number 
+of server-side transactions in 
+the hash table             0
+2026-02-20 20:45:12.969013 number 
+of client-side transactions in 
+the hash table             0
+2026-02-20 20:45:12.969016 number 
+of dialogs in the hash table      
+                        0
+2026-02-20 20:45:12.969019 number 
+of sip messages received          
+                        0
+2026-02-20 20:45:12.969023 number 
+of sip messages sent              
+                        0
+2026-02-20 20:45:12.969026 number 
+of sip requests received          
+                        0
+2026-02-20 20:45:12.969029 number 
+of sip requests sent              
+                        0
+2026-02-20 20:45:12.969032 number 
+of bad sip messages received      
+                        0
+2026-02-20 20:45:12.969035 number 
+of bad sip requests received      
+                        0
+2026-02-20 20:45:12.969038 number 
+of bad sip requests dropped       
+                        0
+2026-02-20 20:45:12.969042 number 
+of bad sip reponses dropped       
+                        0
+2026-02-20 20:45:12.969045 number 
+of client transactions created    
+                        0
+2026-02-20 20:45:12.969048 number 
+of server transactions created    
+                        0
+2026-02-20 20:45:12.969051 number 
+of in-dialog server transactions 
+created                  0
+2026-02-20 20:45:12.969054 number 
+of server transactions that have 
+received ack             0
+2026-02-20 20:45:12.969057 number 
+of server transactions that have 
+received cancel          0
+2026-02-20 20:45:12.969060 number 
+of requests that were processed 
+stateless                 0
+2026-02-20 20:45:12.969064 number 
+of requests converted to 
+transactions by message callback 0
+2026-02-20 20:45:12.969067 number 
+of responses without matching 
+request                     0
+2026-02-20 20:45:12.969070 number 
+of successful responses missing 
+INVITE client transaction 0
+2026-02-20 20:45:12.969075 number 
+of requests merged by UAS         
+                        0
+2026-02-20 20:45:12.969078 number 
+of SIP responses sent by stack    
+                        0
+2026-02-20 20:45:12.969081 number 
+of SIP requests retransmitted by 
+stack                    0
+2026-02-20 20:45:12.969084 number 
+of SIP responses retransmitted by 
+stack                   0
+2026-02-20 20:45:12.969087 number 
+of retransmitted SIP requests 
+received by stack           0
+2026-02-20 20:45:12.969091 number 
+of SIP client transactions that 
+has timeout               0
+2026-02-20 20:45:12.969094 number 
+of SIP server transactions that 
+has timeout               0
+2026-02-20 20:45:12.969097 
+SipDiaSD_LoglogController storage 
+counts
+2026-02-20 20:45:12.969101 
+----------------------------------
+2026-02-20 20:45:12.969105 IIP 
+size:                             
+                           0
+2026-02-20 20:45:12.969109 
+StableDialogs total size:         
+                               0
+2026-02-20 20:45:12.969112 
+StableDialogs uac:                
+                               0
+2026-02-20 20:45:12.969116 
+StableDialogs uas:                
+                               0
+2026-02-20 20:45:12.969119 
+m_mapTransactionId2Irq size:      
+                               0
+2026-02-20 20:45:12.969123 number 
+of outgoing transactions held for 
+timerD:                 0
+2026-02-20 20:45:12.969127 number 
+of outgoing transactions waiting 
+for ACK from app:        0
+2026-02-20 20:45:12.969131 RIP 
+size:                             
+                           0
+2026-02-20 20:45:12.969137 
+general queue size:               
+                               0
+2026-02-20 20:45:12.969142 timer 
+A queue size:                     
+                         0
+2026-02-20 20:45:12.969146 timer 
+B queue size:                     
+                         0
+2026-02-20 20:45:12.969150 timer 
+C queue size:                     
+                         0
+2026-02-20 20:45:12.969153 timer 
+D queue size:                     
+                         0
+2026-02-20 20:45:12.969157 timer 
+E queue size:                     
+                         0
+2026-02-20 20:45:12.969160 timer 
+F queue size:                     
+                         0
+2026-02-20 20:45:12.969164 timer 
+G queue size:                     
+                         0
+2026-02-20 20:45:12.969171 timer 
+K queue size:                     
+                         0
+2026-02-20 20:45:12.969174 
+ClientController storage counts
+2026-02-20 20:45:12.969178 
+----------------------------------
+2026-02-20 20:45:12.969182 
+m_clients size:                   
+                               0
+2026-02-20 20:45:12.969185 
+m_services size:                  
+                               0
+2026-02-20 20:45:12.969191 
+m_request_types size:             
+                               0
+2026-02-20 20:45:12.969194 
+m_map_of_request_type_offsets 
+size:                             
+ 0
+2026-02-20 20:45:12.969198 
+m_mapDialogs size:                
+                               0
+2026-02-20 20:45:12.969201 
+m_mapNetTransactions size:        
+                               0
+2026-02-20 20:45:12.969206 
+m_mapAppTransactions size:        
+                               0
+2026-02-20 20:45:12.969209 
+m_mapApiRequests size:            
+                               0
+2026-02-20 20:45:12.969213 
+m_mapDialogId2Appname size:       
+                               0
+2026-02-20 20:45:12.969217 
+PendingRequestController storage 
+counts
+2026-02-20 20:45:12.969222 
+----------------------------------
+2026-02-20 20:45:12.969226 
+m_mapCallId2Invite size:          
+                               0
+2026-02-20 20:45:12.969230 
+m_mapTxnId2Invite size:           
+                               0
+2026-02-20 20:45:12.969234 
+SipProxyController storage counts
+2026-02-20 20:45:12.969240 
+----------------------------------
+2026-02-20 20:45:12.969243 
+m_mapCallId2Proxy size:           
+                               0
+2026-02-20 20:45:12.969247 
+m_mapNonce2Challenge size:        
+                               0
+2026-02-20 20:45:12.969250 
+general queue size:               
+                               0
+2026-02-20 20:45:12.969254 timer 
+A queue size:                     
+                         0
+2026-02-20 20:45:12.969258 timer 
+B queue size:                     
+                         0
+2026-02-20 20:45:12.969261 timer 
+C queue size:                     
+                         0
+2026-02-20 20:45:12.969266 timer 
+D queue size:                     
+                         0
+2026-02-20 20:45:12.969270 timer 
+E queue size:                     
+                         0
+2026-02-20 20:45:12.969274 timer 
+F queue size:                     
+                         0
+2026-02-20 20:45:12.969325 timer 
+G queue size:                     
+                         0
+2026-02-20 20:45:12.969339 timer 
+K queue size:                     
+                         0
+2026-02-20 20:45:12.969349 
+m_mapUri2InvalidData size:        
+                               0
+2026-02-20 20:45:42.984997 Drachti
+oController::processWatchdogTimer
+2026-02-20 20:45:42.985093 size 
+of hash table for server-side 
+transactions                  31
+2026-02-20 20:45:42.985105 size 
+of hash table for client-side 
+transactions                  31
+2026-02-20 20:45:42.985110 size 
+of hash table for dialogs         
+                          31
+2026-02-20 20:45:42.985113 number 
+of server-side transactions in 
+the hash table             0
+2026-02-20 20:45:42.985117 number 
+of client-side transactions in 
+the hash table             0
+2026-02-20 20:45:42.985121 number 
+of dialogs in the hash table      
+                        0
+2026-02-20 20:45:42.985125 number 
+of sip messages received          
+                        0
+2026-02-20 20:45:42.985128 number 
+of sip messages sent              
+                        0
+2026-02-20 20:45:42.985132 number 
+of sip requests received          
+                        0
+2026-02-20 20:45:42.985135 number 
+of sip requests sent              
+                        0
+2026-02-20 20:45:42.985139 number 
+of bad sip messages received      
+                        0
+2026-02-20 20:45:42.985143 number 
+of bad sip requests received      
+                        0
+2026-02-20 20:45:42.985146 number 
+of bad sip requests dropped       
+                        0
+2026-02-20 20:45:42.985150 number 
+of bad sip reponses dropped       
+                        0
+2026-02-20 20:45:42.985153 number 
+of client transactions created    
+                        0
+2026-02-20 20:45:42.985157 number 
+of server transactions created    
+                        0
+2026-02-20 20:45:42.985161 number 
+of in-dialog server transactions 
+created                  0
+2026-02-20 20:45:42.985164 number 
+of server transactions that have 
+received ack             0
+2026-02-20 20:45:42.985168 number 
+of server transactions that have 
+received cancel          0
+2026-02-20 20:45:42.985173 number 
+of requests that were processed 
+stateless                 0
+2026-02-20 20:45:42.985176 number 
+of requests converted to 
+transactions by message callback 0
+2026-02-20 20:45:42.985180 number 
+of responses without matching 
+request                     0
+2026-02-20 20:45:42.985183 number 
+of successful responses missing 
+INVITE client transaction 0
+2026-02-20 20:45:42.985188 number 
+of requests merged by UAS         
+                        0
+2026-02-20 20:45:42.985192 number 
+of SIP responses sent by stack    
+                        0
+2026-02-20 20:45:42.985196 number 
+of SIP requests retransmitted by 
+stack                    0
+2026-02-20 20:45:42.985199 number 
+of SIP responses retransmitted by 
+stack                   0
+2026-02-20 20:45:42.985203 number 
+of retransmitted SIP requests 
+received by stack           0
+2026-02-20 20:45:42.985207 number 
+of SIP client transactions that 
+has timeout               0
+2026-02-20 20:45:42.985211 number 
+of SIP server transactions that 
+has timeout               0
+2026-02-20 20:45:42.985217 
+SipDiaSD_LoglogController storage 
+counts
+2026-02-20 20:45:42.985223 
+----------------------------------
+2026-02-20 20:45:42.985229 IIP 
+size:                             
+                           0
+2026-02-20 20:45:42.985236 
+StableDialogs total size:         
+                               0
+2026-02-20 20:45:42.985246 
+StableDialogs uac:                
+                               0
+2026-02-20 20:45:42.985252 
+StableDialogs uas:                
+                               0
+2026-02-20 20:45:42.985258 
+m_mapTransactionId2Irq size:      
+                               0
+2026-02-20 20:45:42.985269 number 
+of outgoing transactions held for 
+timerD:                 0
+2026-02-20 20:45:42.985276 number 
+of outgoing transactions waiting 
+for ACK from app:        0
+2026-02-20 20:45:42.985284 RIP 
+size:                             
+                           0
+2026-02-20 20:45:42.985289 
+general queue size:               
+                               0
+2026-02-20 20:45:42.985294 timer 
+A queue size:                     
+                         0
+2026-02-20 20:45:42.985299 timer 
+B queue size:                     
+                         0
+2026-02-20 20:45:42.985305 timer 
+C queue size:                     
+                         0
+2026-02-20 20:45:42.985310 timer 
+D queue size:                     
+                         0
+2026-02-20 20:45:42.985317 timer 
+E queue size:                     
+                         0
+2026-02-20 20:45:42.985323 timer 
+F queue size:                     
+                         0
+2026-02-20 20:45:42.985328 timer 
+G queue size:                     
+                         0
+2026-02-20 20:45:42.985334 timer 
+K queue size:                     
+                         0
+2026-02-20 20:45:42.985341 
+ClientController storage counts
+2026-02-20 20:45:42.985348 
+----------------------------------
+2026-02-20 20:45:42.985355 
+m_clients size:                   
+                               0
+2026-02-20 20:45:42.985360 
+m_services size:                  
+                               0
+2026-02-20 20:45:42.985365 
+m_request_types size:             
+                               0
+2026-02-20 20:45:42.985372 
+m_map_of_request_type_offsets 
+size:                             
+ 0
+2026-02-20 20:45:42.985378 
+m_mapDialogs size:                
+                               0
+2026-02-20 20:45:42.985385 
+m_mapNetTransactions size:        
+                               0
+2026-02-20 20:45:42.985391 
+m_mapAppTransactions size:        
+                               0
+2026-02-20 20:45:42.985398 
+m_mapApiRequests size:            
+                               0
+2026-02-20 20:45:42.985403 
+m_mapDialogId2Appname size:       
+                               0
+2026-02-20 20:45:42.985414 
+PendingRequestController storage 
+counts
+2026-02-20 20:45:42.985420 
+----------------------------------
+2026-02-20 20:45:42.985427 
+m_mapCallId2Invite size:          
+                               0
+2026-02-20 20:45:42.985433 
+m_mapTxnId2Invite size:           
+                               0
+2026-02-20 20:45:42.985440 
+SipProxyController storage counts
+2026-02-20 20:45:42.985446 
+----------------------------------
+2026-02-20 20:45:42.985453 
+m_mapCallId2Proxy size:           
+                               0
+2026-02-20 20:45:42.985460 
+m_mapNonce2Challenge size:        
+                               0
+2026-02-20 20:45:42.985475 
+general queue size:               
+                               0
+2026-02-20 20:45:42.985489 timer 
+A queue size:                     
+                         0
+2026-02-20 20:45:42.985501 timer 
+B queue size:                     
+                         0
+2026-02-20 20:45:42.985511 timer 
+C queue size:                     
+                         0
+2026-02-20 20:45:42.985560 timer 
+D queue size:                     
+                         0
+2026-02-20 20:45:42.985576 timer 
+E queue size:                     
+                         0
+2026-02-20 20:45:42.985582 timer 
+F queue size:                     
+                         0
+2026-02-20 20:45:42.985588 timer 
+G queue size:                     
+                         0
+2026-02-20 20:45:42.985596 timer 
+K queue size:                     
+                         0
+2026-02-20 20:45:42.985605 
+m_mapUri2InvalidData size:        
+                               0

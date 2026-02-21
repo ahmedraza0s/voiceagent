@@ -2,8 +2,7 @@
 import { DeepgramSTTService } from '../stt/deepgram';
 import { GroqLLMService } from '../llm/groq';
 import { SarvamTTSService } from '../tts/sarvam';
-
-import { LiveKitAgent } from '../rooms/livekit-agent';
+import { FreeSwitchAudioBridge } from '../freeswitch/FreeSwitchAudioBridge';
 import logger from '../../utils/logger';
 import { EventEmitter } from 'events';
 
@@ -11,21 +10,23 @@ import { EventEmitter } from 'events';
  * Conversation Pipeline
  * Orchestrates the complete streaming pipeline:
  * Audio → STT → LLM → TTS → Audio
+ *
+ * Audio I/O is now handled by FreeSwitchAudioBridge (RTP ↔ FreeSWITCH) instead of LiveKit.
  */
 export class ConversationPipeline extends EventEmitter {
     private stt: DeepgramSTTService;
     private llm: GroqLLMService;
     private tts: SarvamTTSService;
-    private agent: LiveKitAgent;
+    private bridge: FreeSwitchAudioBridge;
     private isProcessing: boolean = false;
-    private roomName: string | null = null;
+    private callId: string | null = null;
 
-    constructor() {
+    constructor(localRtpPort: number = 0) {
         super();
         this.stt = new DeepgramSTTService();
         this.llm = new GroqLLMService();
         this.tts = new SarvamTTSService();
-        this.agent = new LiveKitAgent();
+        this.bridge = new FreeSwitchAudioBridge(localRtpPort);
 
         this.setupPipeline();
     }
@@ -34,8 +35,8 @@ export class ConversationPipeline extends EventEmitter {
      * Set up the complete streaming pipeline
      */
     private setupPipeline(): void {
-        // Step 1: Handle audio from LiveKit Agent (User speaking)
-        this.agent.on('audio', (pcmBuffer: Buffer) => {
+        // Step 1: Handle audio from FreeSWITCH (caller speaking)
+        this.bridge.on('audio', (pcmBuffer: Buffer) => {
             if (this.stt) {
                 this.stt.sendAudio(pcmBuffer);
             }
@@ -48,7 +49,6 @@ export class ConversationPipeline extends EventEmitter {
 
         // Handle interim results for barge-in detection
         this.stt.on('interim', (interim: string) => {
-            // If the user starts speaking, signal barge-in
             if (this.tts.playing || this.isProcessing) {
                 logger.info('User speaking - signaling potential barge-in', { interim });
                 this.tts.stop();
@@ -60,11 +60,7 @@ export class ConversationPipeline extends EventEmitter {
         this.stt.on('error', (error: any) => this.handleError('STT', error));
         this.tts.on('error', (error: any) => this.handleError('TTS', error));
 
-        // Agent events
-        this.agent.on('disconnected', () => {
-            logger.info('Agent disconnected from room');
-            this.stop(); // Stop pipeline if agent disconnects
-        });
+        this.bridge.on('error', (error: any) => this.handleError('AudioBridge', error));
     }
 
     private handleError(service: string, error: any): void {
@@ -77,7 +73,7 @@ export class ConversationPipeline extends EventEmitter {
      */
     async sayHello(): Promise<void> {
         logger.info('👋 Triggering initial AI greeting');
-        await this.handleTranscript(null); // Passing null triggers dynamic greeting from LLM
+        await this.handleTranscript(null); // null triggers dynamic greeting from LLM
     }
 
     /**
@@ -85,7 +81,7 @@ export class ConversationPipeline extends EventEmitter {
      */
     private async handleTranscript(transcript: string | null): Promise<void> {
         if (this.isProcessing) {
-            logger.warn('Already processing, queuing transcript');
+            logger.warn('Already processing, skipping transcript');
             return;
         }
 
@@ -101,11 +97,9 @@ export class ConversationPipeline extends EventEmitter {
             // Step 4: Convert LLM response to speech
             const ttsStream = this.tts.streamSpeech(llmStream);
 
-            // Step 5: Stream audio chunks to LiveKit
+            // Step 5: Stream audio chunks to FreeSWITCH via RTP
             for await (const audioChunk of ttsStream) {
-                // Publish to LiveKit participant
-                // logger.debug('Audio chunk ready for streaming');
-                await this.agent.pushAudio(audioChunk);
+                this.bridge.pushAudio(audioChunk);
                 this.emit('audioChunk', audioChunk);
             }
 
@@ -121,11 +115,22 @@ export class ConversationPipeline extends EventEmitter {
 
     /**
      * Start the conversation pipeline
+     * @param callId - FreeSWITCH call UUID or unique call identifier
+     * @param remoteRtpAddress - FreeSWITCH media IP (from SDP)
+     * @param remoteRtpPort - FreeSWITCH media port (from SDP)
+     * @param systemPrompt - optional system prompt override
+     * @param voiceId - optional TTS voice override
      */
-    async start(roomName: string, systemPrompt?: string, voiceId?: string): Promise<void> {
+    async start(
+        callId: string,
+        remoteRtpAddress?: string,
+        remoteRtpPort?: number,
+        systemPrompt?: string,
+        voiceId?: string
+    ): Promise<void> {
         try {
-            logger.info('Starting conversation pipeline', { roomName });
-            this.roomName = roomName;
+            logger.info('Starting conversation pipeline', { callId });
+            this.callId = callId;
 
             if (systemPrompt) this.llm.setSystemPrompt(systemPrompt);
             if (voiceId) this.tts.setSpeaker(voiceId);
@@ -133,12 +138,15 @@ export class ConversationPipeline extends EventEmitter {
             // Connect to Deepgram STT
             await this.stt.connect();
 
-            // Connect Agent to LiveKit Room
-            // We use a slight delay or retry logic if the room isn't ready immediately?
-            // Usually createRoom is fast.
-            await this.agent.connect(roomName, 'AI Assistant');
+            // Start the RTP bridge
+            await this.bridge.start();
 
-            logger.info('Conversation pipeline ready');
+            // Set remote endpoint if provided (from SDP negotiation)
+            if (remoteRtpAddress && remoteRtpPort) {
+                this.bridge.setRemoteEndpoint(remoteRtpAddress, remoteRtpPort);
+            }
+
+            logger.info('Conversation pipeline ready', { callId, localRtpPort: this.bridge.localRtpPort });
             this.emit('ready');
 
         } catch (error) {
@@ -152,12 +160,12 @@ export class ConversationPipeline extends EventEmitter {
      */
     async stop(): Promise<void> {
         try {
-            logger.info('Stopping conversation pipeline', { roomName: this.roomName });
+            logger.info('Stopping conversation pipeline', { callId: this.callId });
 
             this.tts.stop();
             await this.stt.disconnect();
             this.llm.clearHistory();
-            await this.agent.disconnect();
+            this.bridge.stop();
 
             logger.info('Conversation pipeline stopped');
             this.emit('stopped');
@@ -168,14 +176,21 @@ export class ConversationPipeline extends EventEmitter {
     }
 
     /**
+     * Get the local RTP port this pipeline is listening on
+     */
+    get localRtpPort(): number {
+        return this.bridge.localRtpPort;
+    }
+
+    /**
      * Get conversation history
      */
     getHistory(): any[] {
         return this.llm.getHistory();
     }
 
-    // Legacy method support if needed, or remove
+    // Legacy method support
     processAudio(_audioBuffer: Buffer): void {
-        // No-op, handled by agent event
+        // No-op, handled by bridge event
     }
 }

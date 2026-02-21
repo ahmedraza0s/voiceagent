@@ -1,7 +1,7 @@
 {
   "name": "ai-voice-agent-backend",
   "version": "1.0.0",
-  "description": "Production-ready real-time AI Voice Agent backend with LiveKit, Deepgram, Groq, and Sarvam.ai",
+  "description": "Production-ready real-time AI Voice Agent backend with FreeSWITCH, Deepgram, Groq, and Sarvam.ai",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -22,7 +22,6 @@
   "license": "MIT",
   "dependencies": {
     "@deepgram/sdk": "^3.8.0",
-    "@livekit/rtc-node": "^0.13.24",
     "@types/express-ws": "^3.0.6",
     "@types/uuid": "^11.0.0",
     "axios": "^1.7.9",
@@ -33,8 +32,6 @@
     "express": "^5.2.1",
     "express-ws": "^5.0.2",
     "groq-sdk": "^0.8.0",
-    "livekit-client": "^2.17.1",
-    "livekit-server-sdk": "^2.15.0",
     "sdp-transform": "^3.0.0",
     "sip": "^0.0.6",
     "uuid": "^13.0.0",

@@ -1,0 +1,75 @@
+﻿docker : 2026-02-20 
+20:49:45.720358 Starting drachtio 
+version v0.9.5
+At line:1 char:1
++ docker logs drachtio-server 
+*>&1 | Select-Object -First 20 | 
+Out-File ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : Not 
+   Specified: (2026-02-20 20:4..  
+  . version v0.9.5:String) [],    
+ RemoteException
+    + FullyQualifiedErrorId : Nat 
+   iveCommandError
+ 
+2026-02-20 20:49:45.720642 
+Logging threshold:                
+     5
+2026-02-20 20:49:45.720718 
+DrachtioController::run: Main 
+thread id: 123625442004736
+2026-02-20 20:49:45.720810 
+DrachtioController::run listening 
+for applications on tcp port 9022 
+only
+2026-02-20 20:49:45.737650 ClientC
+ontroller::ClientController done 
+setting tls options: 
+2026-02-20 20:49:45.737766 Client 
+controller initializing with tcp 
+only
+2026-02-20 20:49:45.737872 Client 
+controller thread id: 
+123625442004736
+2026-02-20 20:49:45.738308 
+ClientController::start_accept_tcp
+2026-02-20 20:49:45.738348 Client 
+controller thread id: 
+123625441978048
+2026-02-20 20:49:45.738424 
+ClientController::threadFunc - 
+ClientController: io_context run 
+loop started (or restarted)
+2026-02-20 20:49:45.738594 
+DrachtioController::run - 
+blacklist checking config
+2026-02-20 20:49:45.738780 
+DrachtioController::run - 
+blacklist is disabled
+2026-02-20 20:49:45.738896 
+Prometheus support disabled
+2026-02-20 20:49:45.739141 tcp 
+keep alives will be sent to 
+clients every 45 seconds
+2026-02-20 20:49:45.739991 
+DrachtioController::run: starting 
+sip stack on sip:0.0.0.0:5060
+2026-02-20 20:49:45.740172 SipTran
+sport::getBindableContactUri: 
+sip:0.0.0.0:5060
+2026-02-20 20:49:45.741593 
+nta.c:979 nta_agent_create() 
+nta_agent_create: initialized 
+hash tables
+2026-02-20 20:49:45.742525 
+tport.c:529 tport_tcreate() 
+tport_create(): 0x6059d947a300
+2026-02-20 20:49:45.743392 
+nta.c:2401 
+agent_create_master_transport() 
+nta: master transport created
+2026-02-20 20:49:45.743913 
+tport.c:1667 tport_bind_server() 
+tport_bind_server(0x6059d947a300) 
+to */0.0.0.0:5060

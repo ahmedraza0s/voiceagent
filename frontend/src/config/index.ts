@@ -8,12 +8,8 @@ dotenv.config();
  */
 function validateEnv(): void {
     const required = [
-        'LIVEKIT_URL',
-        'LIVEKIT_API_KEY',
-        'LIVEKIT_API_SECRET',
         'DEEPGRAM_API_KEY',
         'GROQ_API_KEY',
-        'SARVAM_API_KEY',
         'SARVAM_API_KEY',
     ];
 
@@ -33,12 +29,12 @@ validateEnv();
  * Application configuration loaded from environment variables
  */
 export const config = {
-    // LiveKit Configuration
-    livekit: {
-        url: process.env.LIVEKIT_URL!,
-        apiKey: process.env.LIVEKIT_API_KEY!,
-        apiSecret: process.env.LIVEKIT_API_SECRET!,
-        sipTrunkId: process.env.LIVEKIT_SIP_TRUNK_ID,
+    // FreeSWITCH ESL Configuration
+    freeswitch: {
+        host: process.env.FREESWITCH_HOST || '127.0.0.1',
+        port: parseInt(process.env.FREESWITCH_PORT || '8021', 10),
+        password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
+        sipGateway: process.env.FREESWITCH_SIP_GATEWAY || 'vivphone',
     },
 
     // Deepgram Configuration (STT)

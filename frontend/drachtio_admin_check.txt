@@ -1,0 +1,19 @@
+﻿
+2026-02-20 20:49:45.720810 
+DrachtioController::run listening 
+for applications on tcp port 9022 
+only
+2026-02-20 20:49:45.745828 
+tport.c:780 tport_listen() 
+tport_listen(0x6059d9518000): 
+listening at udp/127.0.0.1:5060
+2026-02-20 20:49:45.746300 
+tport.c:780 tport_listen() 
+tport_listen(0x6059d9518280): 
+listening at tcp/127.0.0.1:5060
+2026-02-20 20:49:45.746977 
+tport.c:780 tport_listen() 
+tport_listen(0x6059d9518500): 
+listening at ws/127.0.0.1:5060
+
+

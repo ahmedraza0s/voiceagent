@@ -1,0 +1,51 @@
+﻿
+> ai-voice-agent-backend@1.0.0 dev
+> tsx watch src/index.ts
+
+2026-02-19 00:53:19 [[32minfo[39m]: Starting SIP Gateway...
+{
+  "service": "ai-voice-agent"
+}
+2026-02-19 00:53:19 [[32minfo[39m]: SIP Stack started on port 5060
+{
+  "service": "ai-voice-agent"
+}
+npm : node:events:496
+At line:1 char:1
++ npm run dev 2>&1 | Out-File -FilePath 
+"dev-errors.txt" -Encoding utf8 ...
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : Not    
+Specified: (node:events:496:S    tring) 
+[], RemoteException
+    + FullyQualifiedErrorId : Nat    
+iveCommandError
+ 
+      throw er; // Unhandled 'error' 
+event
+      ^
+
+Error: bind EADDRINUSE 0.0.0.0:5060
+    at 
+__node_internal_captureLargerStackTrace 
+(node:internal/errors:563:5)
+    at 
+__node_internal_exceptionWithHostPort 
+(node:internal/errors:738:12)
+    at node:dgram:363:20
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:83:21)
+Emitted 'error' event on Socket instance 
+at:
+    at node:dgram:365:14
+    at process.processTicksAndRejections 
+(node:internal/process/task_queues:83:21)
+ {
+  errno: -4091,
+  code: 'EADDRINUSE',
+  syscall: 'bind',
+  address: '0.0.0.0',
+  port: 5060
+}
+
+Node.js v20.11.1

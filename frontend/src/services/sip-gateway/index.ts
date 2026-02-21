@@ -3,6 +3,7 @@ import { SipStack } from './SipStack';
 import { MediaBridge } from './MediaBridge';
 import { RegistrationManager } from './RegistrationManager';
 import { CallSession } from './CallSession';
+import { ConversationPipeline } from '../conversation/pipeline';
 import logger from '../../utils/logger';
 
 
@@ -11,6 +12,7 @@ export class SIPGateway extends EventEmitter {
     private mediaBridge: MediaBridge;
     private registrationManager: RegistrationManager;
     private activeCalls: Map<string, CallSession> = new Map();
+    private activePipelines: Map<string, ConversationPipeline> = new Map();
 
     constructor() {
         super();
@@ -20,13 +22,22 @@ export class SIPGateway extends EventEmitter {
             publicIp: process.env.SIP_PUBLIC_IP
         });
 
-        this.mediaBridge = new MediaBridge(parseInt(process.env.RTP_PORT_RANGE_START || '10000'));
+        this.mediaBridge = new MediaBridge(0);
 
         this.registrationManager = new RegistrationManager(this.sipStack, {
             username: process.env.SIP_USERNAME || '',
             domain: process.env.SIP_DOMAIN || '',
             password: process.env.SIP_PASSWORD || '',
             proxy: process.env.SIP_INBOUND_PROXY
+        });
+
+        // Wire MediaBridge audio events directly to pipelines
+        this.mediaBridge.on('audio', (pcm16: Buffer) => {
+            for (const pipeline of this.activePipelines.values()) {
+                // Forward caller audio to all active pipelines
+                // In practice there's usually one active call at a time
+                (pipeline as any).stt?.sendAudio?.(pcm16);
+            }
         });
 
         // Setup Event Listeners
@@ -66,6 +77,9 @@ export class SIPGateway extends EventEmitter {
         this.registrationManager.stop();
         this.sipStack.stop();
         this.mediaBridge.stop();
+        for (const pipeline of this.activePipelines.values()) {
+            pipeline.stop();
+        }
     }
 
     private handleRequest(request: any) {
@@ -76,17 +90,46 @@ export class SIPGateway extends EventEmitter {
             case 'BYE':
                 this.handleBye(request);
                 break;
-            // ACK, CANCEL, etc. would be handled here
         }
     }
 
-    private handleInvite(request: any) {
+    private async handleInvite(request: any) {
         const callId = request.headers['call-id'];
         logger.info(`Received inbound INVITE: ${callId}`);
+
         const session = new CallSession(this.sipStack, this.mediaBridge, callId);
         this.activeCalls.set(callId, session);
+
+        // Start a conversation pipeline for this call
+        const pipeline = new ConversationPipeline();
+        this.activePipelines.set(callId, pipeline);
+
+        // Wire pipeline audio output back to caller via MediaBridge
+        pipeline.on('audioChunk', (pcm16: Buffer) => {
+            this.mediaBridge.sendAudio(pcm16);
+        });
+
+        pipeline.on('stopped', () => {
+            this.activePipelines.delete(callId);
+        });
+
+        // Emit inbound call event for the main app to handle
         this.emit('inboundCall', { callId, request, session });
-        session.handleInvite(request);
+
+        // Handle the SIP INVITE (sends 100 Trying, 180 Ringing, 200 OK with SDP)
+        await session.handleInvite(request);
+
+        // Start the pipeline after SDP is negotiated
+        const remoteAddress = session.remoteRtpAddress;
+        const remotePort = session.remoteRtpPort;
+
+        try {
+            await pipeline.start(callId, remoteAddress, remotePort);
+            logger.info('📞 Inbound call pipeline started, triggering greeting');
+            await pipeline.sayHello();
+        } catch (err: any) {
+            logger.error('Failed to start pipeline for inbound call', { error: err.message, callId });
+        }
     }
 
     private handleBye(request: any) {
@@ -95,6 +138,14 @@ export class SIPGateway extends EventEmitter {
         if (session) {
             session.end();
             this.activeCalls.delete(callId);
+
+            // Stop pipeline
+            const pipeline = this.activePipelines.get(callId);
+            if (pipeline) {
+                pipeline.stop();
+                this.activePipelines.delete(callId);
+            }
+
             logger.info(`Call ${callId} ended`);
             this.sipStack.send({
                 status: 200,

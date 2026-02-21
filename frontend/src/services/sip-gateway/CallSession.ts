@@ -2,7 +2,6 @@
 import { SipStack } from './SipStack';
 import { MediaBridge } from './MediaBridge';
 import logger from '../../utils/logger';
-// import { sdp as sdpTransform } from 'sdp-transform'; // Need to install types or use require
 const sdpTransform = require('sdp-transform');
 
 export class CallSession {
@@ -11,6 +10,9 @@ export class CallSession {
     private callId: string;
     private remoteSdp: any;
 
+    // Expose for pipeline setup
+    public remoteRtpAddress: string = '';
+    public remoteRtpPort: number = 0;
 
     constructor(sipStack: SipStack, mediaBridge: MediaBridge, callId: string) {
         this.sipStack = sipStack;
@@ -35,22 +37,18 @@ export class CallSession {
         };
         this.sipStack.send(trying);
 
-        // 2. Parsed Remote SDP to get audio port/ip
-        let remotePort = 0;
-        let remoteAddress = '';
-        const roomName = `room-${this.callId.substring(0, 8)}`;
-
+        // 2. Parse Remote SDP to get audio port/ip
         if (request.content) {
             try {
                 this.remoteSdp = sdpTransform.parse(request.content);
                 const audioMedia = this.remoteSdp.media.find((m: any) => m.type === 'audio');
                 if (audioMedia) {
-                    remotePort = audioMedia.port;
-                    remoteAddress = this.remoteSdp.connection?.ip || this.remoteSdp.origin?.address;
-                    logger.info(`Remote Audio: ${remoteAddress}:${remotePort} (${audioMedia.protocol})`);
+                    this.remoteRtpPort = audioMedia.port;
+                    this.remoteRtpAddress = this.remoteSdp.connection?.ip || this.remoteSdp.origin?.address;
+                    logger.info(`Remote Audio: ${this.remoteRtpAddress}:${this.remoteRtpPort}`);
 
-                    // Trigger bridge with unique room name
-                    await this.mediaBridge.bridgeToRoom(roomName, remotePort, remoteAddress);
+                    // Configure MediaBridge to send RTP back to caller
+                    this.mediaBridge.setRemoteEndpoint(this.remoteRtpPort, this.remoteRtpAddress);
                 }
             } catch (sdpError) {
                 logger.error('Failed to parse remote SDP', { error: sdpError });
@@ -65,9 +63,9 @@ export class CallSession {
         };
         this.sipStack.send(ringing);
 
-        // 4. Generate Local SDP and Send OK (Answer)
+        // 4. Generate Local SDP and Send 200 OK
         const localIp = this.sipStack.config.publicIp || '127.0.0.1';
-        const localMediaPort = (this.mediaBridge as any).port; // Internal access for signaling
+        const localMediaPort = (this.mediaBridge as any).port;
 
         const answerSdp = [
             'v=0',
@@ -97,10 +95,10 @@ export class CallSession {
             logger.debug(`Answer response: ${res.status}`);
         });
 
-        logger.info(`Call ${this.callId} answered. Room: ${roomName}`);
+        logger.info(`Call ${this.callId} answered`);
     }
 
     end() {
-        // Send BYE if active
+        logger.info(`CallSession ${this.callId} ended`);
     }
 }

@@ -1,0 +1,26 @@
+services:
+  drachtio:
+    image: drachtio/drachtio-server:latest
+    container_name: drachtio-server
+    command: drachtio --contact "sip:0.0.0.0:5062" --admin-port 9022 --loglevel debug --secret ClueCon
+    ports:
+      - "9022:9022/tcp"
+      - "5062:5062/udp"
+      - "5062:5062/tcp"
+    networks:
+      - telephony
+
+  freeswitch:
+    image: drachtio/drachtio-freeswitch-mrf:v1.10.1-full
+    container_name: freeswitch
+    ports:
+      - "8021:8021/tcp"
+      - "16384-16484:16384-16484/udp"
+    networks:
+      - telephony
+    depends_on:
+      - drachtio
+
+networks:
+  telephony:
+    driver: bridge
