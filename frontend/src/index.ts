@@ -33,6 +33,13 @@ class VoiceAgentApp {
             logger.error('Failed to start SIP Gateway', { error: err.message });
         });
 
+        // Wire inbound calls from local SIP Gateway
+        this.sipGateway.on('inboundCall', (data) => {
+            logger.info('📞 Inbound call received via local SIP Gateway', { callId: data.callId });
+            // The gateway handles its own pipeline, but we track it here
+            this.activePipelines.set(data.callId, (data.session as any).pipeline);
+        });
+
         // Wire outbound call connected event
         this.freeSwitchService.on('callConnected', async (data) => {
             logger.info('📞 Outbound call connected event received', { callId: data.callId });
