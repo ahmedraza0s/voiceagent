@@ -15,7 +15,6 @@ export interface AgentConfig {
 
 interface DatabaseSchema {
     agents: AgentConfig[];
-    defaultInboundAgentId: string | null;
 }
 
 export class AgentService {
@@ -33,8 +32,7 @@ export class AgentService {
         }
         if (!fs.existsSync(this.dbPath)) {
             const initialDb: DatabaseSchema = {
-                agents: [],
-                defaultInboundAgentId: null
+                agents: []
             };
             fs.writeFileSync(this.dbPath, JSON.stringify(initialDb, null, 2));
         }
@@ -46,7 +44,7 @@ export class AgentService {
             return JSON.parse(data);
         } catch (error) {
             logger.error('Failed to read agents database', { error });
-            return { agents: [], defaultInboundAgentId: null };
+            return { agents: [] };
         }
     }
 
@@ -78,11 +76,6 @@ export class AgentService {
         };
         db.agents.push(newAgent);
 
-        // If this is the first agent, make it the default inbound
-        if (db.agents.length === 1) {
-            db.defaultInboundAgentId = newAgent.id;
-        }
-
         this.writeDb(db);
         return newAgent;
     }
@@ -106,27 +99,8 @@ export class AgentService {
         const initialLength = db.agents.length;
         db.agents = db.agents.filter(a => a.id !== id);
 
-        if (db.defaultInboundAgentId === id) {
-            db.defaultInboundAgentId = db.agents.length > 0 ? db.agents[0].id : null;
-        }
-
         this.writeDb(db);
         return db.agents.length < initialLength;
-    }
-
-    setInboundAgent(id: string): boolean {
-        const db = this.readDb();
-        if (!db.agents.find(a => a.id === id)) return false;
-
-        db.defaultInboundAgentId = id;
-        this.writeDb(db);
-        return true;
-    }
-
-    getInboundAgent(): AgentConfig | undefined {
-        const db = this.readDb();
-        if (!db.defaultInboundAgentId) return undefined;
-        return db.agents.find(a => a.id === db.defaultInboundAgentId);
     }
 }
 

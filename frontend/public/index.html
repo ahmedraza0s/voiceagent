@@ -105,15 +105,14 @@
         async function fetchAgents() {
             try {
                 const agents = await fetch('/api/agents').then(r => r.json());
-                const inbound = await fetch('/api/agents/inbound').then(r => r.json());
 
                 if (agents.length === 0) {
                     agentSelector.innerHTML = '<option value="">No agents found. Create one in Setup!</option>';
                     callBtn.disabled = true;
                 } else {
                     agentSelector.innerHTML = agents.map(a => `
-                        <option value="${a.id}" ${a.id === inbound.id ? 'selected' : ''}>
-                            ${a.name} (${a.voiceId})${a.id === inbound.id ? ' - [Default Inbound]' : ''}
+                        <option value="${a.id}">
+                            ${a.name} (${a.voiceId})
                         </option>
                     `).join('');
                 }

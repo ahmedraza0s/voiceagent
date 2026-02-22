@@ -95,9 +95,9 @@ class VoiceAgentApp {
             const sipSettings = sipId ? sipSettingsService.getSettings(sipId) : undefined;
 
             // Look up agent config
-            // Priority: agentId -> sipSettings.inboundAgentId (mapping) -> default inbound
+            // Priority: agentId -> sipSettings.inboundAgentId (mapping)
             const agent = agentId ? agentService.getAgent(agentId) :
-                (sipSettings?.inboundAgentId ? agentService.getAgent(sipSettings.inboundAgentId) : agentService.getInboundAgent());
+                (sipSettings?.inboundAgentId ? agentService.getAgent(sipSettings.inboundAgentId) : undefined);
 
             if (agent) {
                 logger.info('Using agent configuration', { agentName: agent.name });
@@ -152,9 +152,9 @@ class VoiceAgentApp {
                 toHeader.includes(s.username) || (s.callerId && toHeader.includes(s.callerId))
             );
 
-            // Use mapped agent or fallback to global Inbound Agent
+            // Use mapped agent
             let agentId = matchedSip?.inboundAgentId;
-            let agent = agentId ? agentService.getAgent(agentId) : agentService.getInboundAgent();
+            let agent = agentId ? agentService.getAgent(agentId) : undefined;
 
             if (agent) {
                 logger.info('Assigning agent for inbound call', {
@@ -262,11 +262,6 @@ app.get('/api/agents', (_req, res) => {
     res.json(agentService.listAgents());
 });
 
-// Get current inbound agent
-app.get('/api/agents/inbound', (_req, res) => {
-    res.json(agentService.getInboundAgent() || { error: 'No inbound agent set' });
-});
-
 // Get single agent
 app.get('/api/agents/:id', (req, res) => {
     const agent = agentService.getAgent(req.params.id);
@@ -287,15 +282,6 @@ app.post('/api/agents', (req, res) => {
         const created = agentService.createAgent(name, systemPrompt, voiceId);
         return res.json(created);
     }
-});
-
-// Set inbound agent
-app.post('/api/agents/set-inbound', (req, res) => {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'Agent ID is required' });
-
-    const success = agentService.setInboundAgent(id);
-    return success ? res.json({ success: true }) : res.status(404).json({ error: 'Agent not found' });
 });
 
 // Delete agent
