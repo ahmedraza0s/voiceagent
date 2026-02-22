@@ -1,0 +1,17 @@
+{
+  "sipSettings": [
+    {
+      "name": "92 calling number",
+      "username": "00919240065378",
+      "password": "0oU&WgQn.48W",
+      "domain": "vivap1.vivphone.com",
+      "port": 5060,
+      "callerId": "00919240065378",
+      "proxy": "51.195.161.145",
+      "id": "c570da5e-374a-429b-8eb0-97812e814534",
+      "createdAt": "2026-02-22T12:54:54.014Z",
+      "updatedAt": "2026-02-22T12:57:52.867Z",
+      "inboundAgentId": "69a37cb5-4e08-40e8-acb5-b0a519c56af8"
+    }
+  ]
+}

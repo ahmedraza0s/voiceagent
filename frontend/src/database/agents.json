@@ -9,12 +9,12 @@
       "updatedAt": "2026-02-22T12:40:27.001Z"
     },
     {
-      "id": "eb7d9e6a-d8fc-40e5-9bea-3149a77e654f",
-      "name": "sdfsf",
-      "systemPrompt": "adfsdfsdf",
-      "voiceId": "shubh",
-      "createdAt": "2026-02-22T01:56:17.676Z",
-      "updatedAt": "2026-02-22T01:56:17.676Z"
+      "id": "e0d2aaa6-4a12-40d9-a3b7-5703c43c0d89",
+      "name": "inbound",
+      "systemPrompt": "my name is inbound agent how can i help you",
+      "voiceId": "amit",
+      "createdAt": "2026-02-22T12:56:10.031Z",
+      "updatedAt": "2026-02-22T12:56:10.031Z"
     }
   ],
   "defaultInboundAgentId": "69a37cb5-4e08-40e8-acb5-b0a519c56af8"

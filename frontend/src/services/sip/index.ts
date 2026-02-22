@@ -33,11 +33,11 @@ export class SIPService extends EventEmitter {
     /**
      * Make an outbound call via FreeSWITCH
      */
-    async makeOutboundCall(phoneNumber: string, localSdp: string, callId?: string): Promise<string> {
+    async makeOutboundCall(phoneNumber: string, localSdp: string, callId?: string, settings?: any): Promise<string> {
         try {
             logger.info('🔄 Initiating FreeSWITCH outbound call', { phoneNumber, callId });
 
-            const finalCallId = await this.freeSwitchService.makeOutboundCall(phoneNumber, localSdp, callId);
+            const finalCallId = await this.freeSwitchService.makeOutboundCall(phoneNumber, localSdp, callId, settings);
 
             this.activeCalls.set(finalCallId, {
                 phoneNumber,

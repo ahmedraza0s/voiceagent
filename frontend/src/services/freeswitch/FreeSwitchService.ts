@@ -3,6 +3,7 @@ import Srf from 'drachtio-srf';
 import logger from '../../utils/logger';
 import config from '../../config';
 import { calculateDigest, parseChallenge } from '../../utils/digest-auth';
+import { SipSettings } from '../sip/SipSettingsService';
 
 export interface CallInfo {
     callId: string;
@@ -29,8 +30,7 @@ export class FreeSwitchService extends EventEmitter {
     private lastErrorLogged: number = 0;
     private readonly ERROR_LOG_INTERVAL = 30000; // 30 seconds
     private hasLoggedError: boolean = false;
-    private registrationTimer: NodeJS.Timeout | null = null;
-    private registrationCallId: string = `reg-${Math.random().toString(36).substring(7)}`;
+    private registrations: Map<string, { timer: NodeJS.Timeout | null, callId: string, authHeader?: string }> = new Map();
 
     constructor() {
         super();
@@ -60,8 +60,7 @@ export class FreeSwitchService extends EventEmitter {
             this.hasLoggedError = false;
             this.emit('connected');
 
-            // Start SIP registration once connected to drachtio
-            this.startRegistration();
+            // Registration will now be triggered manually or upon loading saved settings
         });
 
         this.srf.on('error', (err: any) => {
@@ -152,13 +151,20 @@ export class FreeSwitchService extends EventEmitter {
     /**
      * Make an outbound call via FreeSWITCH SIP gateway
      */
-    async makeOutboundCall(phoneNumber: string, localSdp: string, providedCallId?: string): Promise<string> {
+    async makeOutboundCall(phoneNumber: string, localSdp: string, providedCallId?: string, settings?: SipSettings): Promise<string> {
         if (!this.isConnected) {
             throw new Error('FreeSWITCH ESL not connected');
         }
 
         const callId = providedCallId || `call-${Date.now()}`;
-        const sipUri = `sip:${phoneNumber}@${config.sip.outbound.domain}`;
+
+        // Use provided settings or fallback to config (backward compat)
+        const domain = settings?.domain || config.sip.outbound.domain;
+        const username = settings?.username || config.sip.outbound.username;
+        const password = settings?.password || config.sip.outbound.password;
+        const callerId = settings?.callerId || config.sip.outbound.callerId || username;
+
+        const sipUri = `sip:${phoneNumber}@${domain}`;
 
         logger.info('📞 Initiating outbound call via FreeSWITCH', { phoneNumber, callId, sipUri });
 
@@ -168,12 +174,12 @@ export class FreeSwitchService extends EventEmitter {
                 {
                     localSdp: localSdp,
                     headers: {
-                        'From': `<sip:${config.sip.outbound.callerId || config.sip.outbound.username}@${config.sip.outbound.domain}>`,
+                        'From': `<sip:${callerId}@${domain}>`,
                         'X-Call-ID': callId,
                     },
                     auth: {
-                        username: config.sip.outbound.username,
-                        password: config.sip.outbound.password,
+                        username: username,
+                        password: password,
                     },
                 }
             );
@@ -327,18 +333,20 @@ export class FreeSwitchService extends EventEmitter {
     /**
      * SIP Registration Logic
      */
-    private startRegistration() {
-        if (config.sip.inbound.username && config.sip.inbound.domain) {
-            this.register();
-        } else {
-            logger.warn('SIP inbound credentials missing, skipping registration via FreeSWITCH');
-        }
-    }
-
-    private async register(authHeader?: string) {
+    async registerSettings(settings: SipSettings, authHeader?: string) {
         if (!this.isConnected) return;
 
-        const { username, password, domain } = config.sip.inbound;
+        const { username, password, domain, id } = settings;
+
+        // Get or create registration state
+        let regState = this.registrations.get(id);
+        if (!regState) {
+            regState = {
+                timer: null,
+                callId: `reg-${Math.random().toString(36).substring(7)}`
+            };
+            this.registrations.set(id, regState);
+        }
 
         const requestOpts: any = {
             method: 'REGISTER',
@@ -348,7 +356,7 @@ export class FreeSwitchService extends EventEmitter {
                 'From': `<sip:${username}@${domain}>`,
                 'Contact': `<sip:${username}@${process.env.SIP_PUBLIC_IP || '127.0.0.1'}:5062>`,
                 'Expires': '3600',
-                'Call-ID': this.registrationCallId,
+                'Call-ID': regState.callId,
             }
         };
 
@@ -360,15 +368,15 @@ export class FreeSwitchService extends EventEmitter {
         try {
             this.srf.request(requestOpts, (err: any, req: any) => {
                 if (err) {
-                    logger.error('Registration request failed', { error: err.message });
+                    logger.error(`Registration request failed for ${username}`, { error: err.message });
                     return;
                 }
 
                 req.on('response', (res: any) => {
                     if (res.status === 200) {
-                        logger.info(`✅ Successfully Registered with ${domain} via Drachtio`);
+                        logger.info(`✅ Successfully Registered ${username}@${domain}`);
                         const expires = parseInt(res.get('Expires') || '3600');
-                        this.scheduleRegistrationRefresh(expires);
+                        this.scheduleRegistrationRefresh(settings, expires);
                     } else if ((res.status === 401 || res.status === 407) && !authHeader) {
                         const challengeHeader = res.get('WWW-Authenticate') || res.get('Proxy-Authenticate');
                         if (challengeHeader) {
@@ -395,23 +403,35 @@ export class FreeSwitchService extends EventEmitter {
                             if (challenge.opaque) authHeaderString += `, opaque="${challenge.opaque}"`;
 
                             // Re-register with auth
-                            this.register(authHeaderString);
+                            this.registerSettings(settings, authHeaderString);
                         }
                     } else {
-                        logger.error(`Registration failed with status ${res.status}`, { reason: res.reason });
+                        logger.error(`Registration failed for ${username} status ${res.status}`, { reason: res.reason });
                         // Retry after 60s
-                        this.scheduleRegistrationRefresh(60);
+                        this.scheduleRegistrationRefresh(settings, 60);
                     }
                 });
             });
         } catch (err: any) {
-            logger.error('Registration failed', { error: err.message });
+            logger.error(`Registration failed for ${username}`, { error: err.message });
         }
     }
 
-    private scheduleRegistrationRefresh(expires: number) {
-        if (this.registrationTimer) clearTimeout(this.registrationTimer);
+    async unregisterSettings(id: string) {
+        const regState = this.registrations.get(id);
+        if (regState?.timer) {
+            clearTimeout(regState.timer);
+        }
+        this.registrations.delete(id);
+        logger.info('Unregistered SIP account', { id });
+    }
+
+    private scheduleRegistrationRefresh(settings: SipSettings, expires: number) {
+        const regState = this.registrations.get(settings.id);
+        if (!regState) return;
+
+        if (regState.timer) clearTimeout(regState.timer);
         const timeout = expires * 1000 * 0.9; // Refresh at 90% of expiry
-        this.registrationTimer = setTimeout(() => this.register(), timeout);
+        regState.timer = setTimeout(() => this.registerSettings(settings), timeout);
     }
 }

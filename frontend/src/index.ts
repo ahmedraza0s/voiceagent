@@ -10,6 +10,7 @@ import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
 import { agentService } from './services/agents/AgentService';
+import { sipSettingsService, SipSettings } from './services/sip/SipSettingsService';
 
 /**
  * AI Voice Agent Backend — FreeSWITCH Edition
@@ -66,19 +67,37 @@ class VoiceAgentApp {
                 logger.error('Error handling inbound call', { error: err.message, callId: data.callId });
             });
         });
+
+        // Initialize SIP registrations
+        this.initializeSipRegistrations();
     }
 
-    async makeOutboundCall(phoneNumber: string, agentId?: string, systemPrompt?: string, voiceId?: string): Promise<string> {
+    private async initializeSipRegistrations() {
+        this.freeSwitchService.on('connected', async () => {
+            const settings = sipSettingsService.listSettings();
+            logger.info(`🔄 Initializing ${settings.length} SIP registrations`);
+            for (const s of settings) {
+                await this.freeSwitchService.registerSettings(s);
+            }
+        });
+    }
+
+    async makeOutboundCall(phoneNumber: string, sipId?: string, agentId?: string, systemPrompt?: string, voiceId?: string): Promise<string> {
         try {
-            logger.info('Making outbound call', { phoneNumber });
+            logger.info('Making outbound call', { phoneNumber, sipId });
 
             const callId = `call-${Date.now()}`;
 
             // Start conversation pipeline first to get local RTP port
             const pipeline = new ConversationPipeline();
 
+            // Look up SIP settings if provided
+            const sipSettings = sipId ? sipSettingsService.getSettings(sipId) : undefined;
+
             // Look up agent config
-            const agent = agentId ? agentService.getAgent(agentId) : agentService.getInboundAgent();
+            // Priority: agentId -> sipSettings.inboundAgentId (mapping) -> default inbound
+            const agent = agentId ? agentService.getAgent(agentId) :
+                (sipSettings?.inboundAgentId ? agentService.getAgent(sipSettings.inboundAgentId) : agentService.getInboundAgent());
 
             if (agent) {
                 logger.info('Using agent configuration', { agentName: agent.name });
@@ -103,8 +122,8 @@ class VoiceAgentApp {
 
             logger.info('Starting outbound call via SIP Service', { callId, localPort, localIp });
 
-            // Initiate call via FreeSWITCH with our SDP and pre-generated callId
-            await this.sipService.makeOutboundCall(phoneNumber, localSdp, callId);
+            // Initiate call via FreeSWITCH with our SDP and pre-generated callId and selective settings
+            await this.sipService.makeOutboundCall(phoneNumber, localSdp, callId, sipSettings);
 
             // STT etc can start now
             await (pipeline as any).stt.connect();
@@ -123,12 +142,27 @@ class VoiceAgentApp {
 
             const pipeline = new ConversationPipeline();
 
-            // Use designated Inbound Agent
-            const inboundAgent = agentService.getInboundAgent();
-            if (inboundAgent) {
-                logger.info('Assigning inbound agent', { agentName: inboundAgent.name });
-                (pipeline as any).llm?.setSystemPrompt?.(inboundAgent.systemPrompt);
-                (pipeline as any).tts?.setSpeaker?.(inboundAgent.voiceId);
+            // Identify which SIP account this call came for
+            // We'll check the 'To' header which usually contains the dialed number in some form
+            const toHeader = req.get('To') || '';
+            const allSipSettings = sipSettingsService.listSettings();
+
+            // Try to find matching SIP setting by username or callerId in the To header
+            const matchedSip = allSipSettings.find(s =>
+                toHeader.includes(s.username) || (s.callerId && toHeader.includes(s.callerId))
+            );
+
+            // Use mapped agent or fallback to global Inbound Agent
+            let agentId = matchedSip?.inboundAgentId;
+            let agent = agentId ? agentService.getAgent(agentId) : agentService.getInboundAgent();
+
+            if (agent) {
+                logger.info('Assigning agent for inbound call', {
+                    agentName: agent.name,
+                    sipUsername: matchedSip?.username || 'unknown'
+                });
+                (pipeline as any).llm?.setSystemPrompt?.(agent.systemPrompt);
+                (pipeline as any).tts?.setSpeaker?.(agent.voiceId);
             }
 
             this.activePipelines.set(callId, pipeline);
@@ -187,6 +221,14 @@ class VoiceAgentApp {
             this.activePipelines.delete(callId);
         }
         await this.sipService.endCall(callId);
+    }
+
+    async registerSipAccount(settings: SipSettings) {
+        await this.freeSwitchService.registerSettings(settings);
+    }
+
+    async unregisterSipAccount(id: string) {
+        await this.freeSwitchService.unregisterSettings(id);
     }
 
     stop(): void {
@@ -262,9 +304,51 @@ app.delete('/api/agents/:id', (req, res) => {
     return success ? res.json({ success: true }) : res.status(404).json({ error: 'Agent not found' });
 });
 
+// --- SIP Settings Management API ---
+
+// List all SIP settings
+app.get('/api/sip-settings', (_req, res) => {
+    res.json(sipSettingsService.listSettings());
+});
+
+// Create/Update SIP settings
+app.post('/api/sip-settings', async (req, res) => {
+    const { id, name, username, password, domain, port, callerId, proxy, inboundAgentId } = req.body;
+    if (!name || !username || !domain || !port) {
+        return res.status(400).json({ error: 'Name, username, domain, and port are required' });
+    }
+
+    if (id) {
+        const updated = sipSettingsService.updateSettings(id, {
+            name, username, password, domain, port, callerId, proxy, inboundAgentId
+        });
+        if (updated) {
+            // Re-register if settings updated
+            await voiceApp.registerSipAccount(updated);
+            return res.json(updated);
+        }
+        return res.status(404).json({ error: 'Settings not found' });
+    } else {
+        const created = sipSettingsService.createSettings({
+            name, username, password, domain, port, callerId, proxy, inboundAgentId
+        });
+        // Register new account
+        await voiceApp.registerSipAccount(created);
+        return res.json(created);
+    }
+});
+
+// Delete SIP settings
+app.delete('/api/sip-settings/:id', async (req, res) => {
+    const id = req.params.id;
+    await voiceApp.unregisterSipAccount(id);
+    const success = sipSettingsService.deleteSettings(id);
+    return success ? res.json({ success: true }) : res.status(404).json({ error: 'Settings not found' });
+});
+
 // --- Call Control API ---
 app.post('/api/call', async (req, res) => {
-    const { phoneNumber, agentId, systemPrompt, voiceId } = req.body;
+    const { phoneNumber, sipId, agentId, systemPrompt, voiceId } = req.body;
     if (!phoneNumber) {
         return res.status(400).json({ error: 'Phone number is required' });
     }
@@ -281,7 +365,7 @@ app.post('/api/call', async (req, res) => {
     }
 
     try {
-        const callId = await voiceApp.makeOutboundCall(phoneNumber, agentId, systemPrompt, voiceId);
+        const callId = await voiceApp.makeOutboundCall(phoneNumber, sipId, agentId, systemPrompt, voiceId);
         activeCall = { callId, phoneNumber };
 
         logger.info('✅ Call initiated successfully', { callId, phoneNumber, agentId });

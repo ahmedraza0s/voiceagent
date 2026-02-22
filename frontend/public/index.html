@@ -17,25 +17,34 @@
             <div class="nav-links">
                 <a href="index.html" class="nav-link active">Dialer</a>
                 <a href="agents.html" class="nav-link">Agents</a>
+                <a href="sip-settings.html" class="nav-link">SIP Settings</a>
             </div>
         </nav>
 
         <div class="glass-card">
             <header>
                 <h2>Start a Conversation</h2>
-                <p class="subtitle">Select an agent and enter a number to begin</p>
+                <p class="subtitle">Select account, assistant and enter number</p>
             </header>
 
             <main>
-                <div class="input-group">
-                    <label for="agentSelector">Select Assistant</label>
-                    <select id="agentSelector" required>
-                        <option value="" disabled selected>Loading agents...</option>
-                    </select>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label for="sipSelector">From (SIP Number)</label>
+                        <select id="sipSelector" required>
+                            <option value="" disabled selected>Loading SIP accounts...</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="agentSelector">To Assistant</label>
+                        <select id="agentSelector" required>
+                            <option value="" disabled selected>Loading agents...</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="input-group">
-                    <label for="phoneNumber">Phone Number</label>
+                    <label for="phoneNumber">To Number</label>
                     <input type="tel" id="phoneNumber" placeholder="+91 11111 22222" list="format-suggestions">
                     <datalist id="format-suggestions">
                         <option value="+91">India</option>
@@ -67,6 +76,7 @@
     <script>
         const phoneNumberInput = document.getElementById('phoneNumber');
         const agentSelector = document.getElementById('agentSelector');
+        const sipSelector = document.getElementById('sipSelector');
         const callBtn = document.getElementById('callBtn');
         const endBtn = document.getElementById('endBtn');
         const statusDiv = document.getElementById('status');
@@ -75,6 +85,22 @@
         const activeCallsDiv = document.getElementById('activeCalls');
 
         let currentCallId = null;
+
+        async function fetchSipAccounts() {
+            try {
+                const accounts = await fetch('/api/sip-settings').then(r => r.json());
+                if (accounts.length === 0) {
+                    sipSelector.innerHTML = '<option value="">No SIP numbers found. Add one in Setup!</option>';
+                    callBtn.disabled = true;
+                } else {
+                    sipSelector.innerHTML = accounts.map(s => `
+                        <option value="${s.id}">${s.name} (${s.username})</option>
+                    `).join('');
+                }
+            } catch (error) {
+                sipSelector.innerHTML = '<option value="">Error loading SIP accounts</option>';
+            }
+        }
 
         async function fetchAgents() {
             try {
@@ -90,7 +116,6 @@
                             ${a.name} (${a.voiceId})${a.id === inbound.id ? ' - [Default Inbound]' : ''}
                         </option>
                     `).join('');
-                    callBtn.disabled = false;
                 }
             } catch (error) {
                 agentSelector.innerHTML = '<option value="">Error loading agents</option>';
@@ -111,9 +136,11 @@
         callBtn.addEventListener('click', async () => {
             const phoneNumber = phoneNumberInput.value.trim();
             const agentId = agentSelector.value;
+            const sipId = sipSelector.value;
 
             if (!phoneNumber) return alert('Please enter a phone number');
             if (!agentId) return alert('Please select an agent');
+            if (!sipId) return alert('Please select a SIP account');
 
             try {
                 callBtn.disabled = true;
@@ -122,7 +149,7 @@
                 const response = await fetch('/api/call', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phoneNumber, agentId })
+                    body: JSON.stringify({ phoneNumber, agentId, sipId })
                 });
 
                 const data = await response.json();
@@ -208,6 +235,7 @@
         };
 
         setInterval(refreshCalls, 5000);
+        fetchSipAccounts();
         fetchAgents();
         refreshCalls();
     </script>
