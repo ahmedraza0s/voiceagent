@@ -9,6 +9,7 @@ import { SIPService } from './services/sip';
 import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
+import { agentService } from './services/agents/AgentService';
 
 /**
  * AI Voice Agent Backend — FreeSWITCH Edition
@@ -67,7 +68,7 @@ class VoiceAgentApp {
         });
     }
 
-    async makeOutboundCall(phoneNumber: string, systemPrompt?: string, voiceId?: string): Promise<string> {
+    async makeOutboundCall(phoneNumber: string, agentId?: string, systemPrompt?: string, voiceId?: string): Promise<string> {
         try {
             logger.info('Making outbound call', { phoneNumber });
 
@@ -75,8 +76,18 @@ class VoiceAgentApp {
 
             // Start conversation pipeline first to get local RTP port
             const pipeline = new ConversationPipeline();
-            if (systemPrompt) (pipeline as any).llm?.setSystemPrompt?.(systemPrompt);
-            if (voiceId) (pipeline as any).tts?.setSpeaker?.(voiceId);
+
+            // Look up agent config
+            const agent = agentId ? agentService.getAgent(agentId) : agentService.getInboundAgent();
+
+            if (agent) {
+                logger.info('Using agent configuration', { agentName: agent.name });
+                (pipeline as any).llm?.setSystemPrompt?.(agent.systemPrompt);
+                (pipeline as any).tts?.setSpeaker?.(agent.voiceId);
+            } else if (systemPrompt || voiceId) {
+                if (systemPrompt) (pipeline as any).llm?.setSystemPrompt?.(systemPrompt);
+                if (voiceId) (pipeline as any).tts?.setSpeaker?.(voiceId);
+            }
 
             // Register the pipeline IMMEDIATELY to avoid race conditions with events
             this.activePipelines.set(callId, pipeline);
@@ -111,6 +122,15 @@ class VoiceAgentApp {
             logger.info('Handling inbound call from FreeSWITCH', { callId });
 
             const pipeline = new ConversationPipeline();
+
+            // Use designated Inbound Agent
+            const inboundAgent = agentService.getInboundAgent();
+            if (inboundAgent) {
+                logger.info('Assigning inbound agent', { agentName: inboundAgent.name });
+                (pipeline as any).llm?.setSystemPrompt?.(inboundAgent.systemPrompt);
+                (pipeline as any).tts?.setSpeaker?.(inboundAgent.voiceId);
+            }
+
             this.activePipelines.set(callId, pipeline);
 
             // Start bridge to get local port
@@ -193,9 +213,52 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API: Start an outbound call
+// --- Agent Management API ---
+
+// List all agents
+app.get('/api/agents', (_req, res) => {
+    res.json(agentService.listAgents());
+});
+
+// Get current inbound agent
+app.get('/api/agents/inbound', (_req, res) => {
+    res.json(agentService.getInboundAgent() || { error: 'No inbound agent set' });
+});
+
+// Create/Update agent
+app.post('/api/agents', (req, res) => {
+    const { id, name, systemPrompt, voiceId } = req.body;
+    if (!name || !systemPrompt || !voiceId) {
+        return res.status(400).json({ error: 'Name, systemPrompt, and voiceId are required' });
+    }
+
+    if (id) {
+        const updated = agentService.updateAgent(id, { name, systemPrompt, voiceId });
+        return updated ? res.json(updated) : res.status(404).json({ error: 'Agent not found' });
+    } else {
+        const created = agentService.createAgent(name, systemPrompt, voiceId);
+        return res.json(created);
+    }
+});
+
+// Set inbound agent
+app.post('/api/agents/set-inbound', (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Agent ID is required' });
+
+    const success = agentService.setInboundAgent(id);
+    return success ? res.json({ success: true }) : res.status(404).json({ error: 'Agent not found' });
+});
+
+// Delete agent
+app.delete('/api/agents/:id', (req, res) => {
+    const success = agentService.deleteAgent(req.params.id);
+    return success ? res.json({ success: true }) : res.status(404).json({ error: 'Agent not found' });
+});
+
+// --- Call Control API ---
 app.post('/api/call', async (req, res) => {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, agentId, systemPrompt, voiceId } = req.body;
     if (!phoneNumber) {
         return res.status(400).json({ error: 'Phone number is required' });
     }
@@ -212,15 +275,14 @@ app.post('/api/call', async (req, res) => {
     }
 
     try {
-        const { systemPrompt, voiceId } = req.body;
-        const callId = await voiceApp.makeOutboundCall(phoneNumber, systemPrompt, voiceId);
+        const callId = await voiceApp.makeOutboundCall(phoneNumber, agentId, systemPrompt, voiceId);
         activeCall = { callId, phoneNumber };
 
-        logger.info('✅ Call initiated successfully', { callId, phoneNumber });
+        logger.info('✅ Call initiated successfully', { callId, phoneNumber, agentId });
         return res.json({ success: true, callId });
-    } catch (error) {
+    } catch (error: any) {
         activeCall = null;
-        logger.error('Failed to initiate call', { error, phoneNumber });
+        logger.error('Failed to initiate call', { error: error.message, phoneNumber });
         return res.status(500).json({ error: 'Failed to initiate call' });
     }
 });

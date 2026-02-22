@@ -1,0 +1,21 @@
+{
+  "agents": [
+    {
+      "id": "69a37cb5-4e08-40e8-acb5-b0a519c56af8",
+      "name": "ahmeddd",
+      "systemPrompt": "your name is ahmed and you have to help people who call you",
+      "voiceId": "rahul",
+      "createdAt": "2026-02-22T01:55:42.281Z",
+      "updatedAt": "2026-02-22T01:55:42.281Z"
+    },
+    {
+      "id": "eb7d9e6a-d8fc-40e5-9bea-3149a77e654f",
+      "name": "sdfsf",
+      "systemPrompt": "adfsdfsdf",
+      "voiceId": "shubh",
+      "createdAt": "2026-02-22T01:56:17.676Z",
+      "updatedAt": "2026-02-22T01:56:17.676Z"
+    }
+  ],
+  "defaultInboundAgentId": "69a37cb5-4e08-40e8-acb5-b0a519c56af8"
+}
