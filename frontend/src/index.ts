@@ -225,6 +225,12 @@ app.get('/api/agents/inbound', (_req, res) => {
     res.json(agentService.getInboundAgent() || { error: 'No inbound agent set' });
 });
 
+// Get single agent
+app.get('/api/agents/:id', (req, res) => {
+    const agent = agentService.getAgent(req.params.id);
+    return agent ? res.json(agent) : res.status(404).json({ error: 'Agent not found' });
+});
+
 // Create/Update agent
 app.post('/api/agents', (req, res) => {
     const { id, name, systemPrompt, voiceId } = req.body;
@@ -316,10 +322,10 @@ app.get('/api/calls', (_req, res) => {
 // API: FreeSWITCH / SIP config info (safe read-only)
 app.get('/api/sip/env-config', (_req, res) => {
     return res.json({
-        username: config.sip.username,
-        domain: config.sip.domain,
-        port: config.sip.port,
-        callerId: config.sip.callerId,
+        username: config.sip.outbound.username,
+        domain: config.sip.outbound.domain,
+        port: config.sip.outbound.port,
+        callerId: config.sip.outbound.callerId,
         freeswitchHost: config.freeswitch.host,
         freeswitchPort: config.freeswitch.port,
         sipGateway: config.freeswitch.sipGateway,
