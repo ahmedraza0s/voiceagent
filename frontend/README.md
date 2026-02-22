@@ -1,35 +1,33 @@
 # AI Voice Agent Backend
 
-Production-ready real-time AI Voice Agent built with Node.js + TypeScript, featuring LiveKit Cloud, Deepgram STT, Groq LLM, and Sarvam.ai TTS.
+Production-ready real-time AI Voice Agent built with Node.js + TypeScript, featuring FreeSWITCH, Deepgram STT, Groq LLM, and Sarvam.ai TTS.
 
 ## 🚀 Features
 
-- **Real-time Audio Streaming** via LiveKit Cloud
-- **SIP Integration** for inbound/outbound calls
+- **Unified Signaling** via FreeSWITCH & Drachtio
+- **Inbound/Outbound calls** handled through a single service
 - **Speech-to-Text** using Deepgram streaming API
 - **LLM Brain** powered by Groq (llama-3.3-70b-versatile)
 - **Text-to-Speech** with Sarvam.ai
 - **Barge-in Support** - interrupts AI when user speaks
-- **Ultra-low Latency** streaming architecture
+- **Ultra-low Latency** streaming PCM architecture
 - **Production-grade Logging** with Winston
-- **Automatic Retry Logic** for API calls
-- **TypeScript** for type safety
+- **Docker-ready** telephony stack (drachtio + FreeSWITCH)
 
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm
-- LiveKit Cloud account ([sign up](https://cloud.livekit.io/))
+- Docker and Docker Compose (for telephony stack)
 - Deepgram API key ([sign up](https://console.deepgram.com/))
 - Groq API key ([sign up](https://console.groq.com/))
 - Sarvam.ai API key
-- (Optional) SIP trunk credentials for phone calls
 
 ## 🛠️ Installation
 
 ### 1. Clone and Install Dependencies
 
 ```bash
-cd voiceagent
+cd voiceagent/frontend
 npm install
 ```
 
@@ -44,11 +42,6 @@ cp .env.example .env
 Edit `.env` with your actual credentials:
 
 ```env
-# LiveKit Cloud
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=your_api_key
-LIVEKIT_API_SECRET=your_api_secret
-
 # Deepgram STT
 DEEPGRAM_API_KEY=your_deepgram_key
 
@@ -59,27 +52,31 @@ GROQ_MODEL=llama-3.3-70b-versatile
 # Sarvam.ai TTS
 SARVAM_API_KEY=your_sarvam_key
 
-# SIP Configuration (optional)
-SIP_USERNAME=your_sip_username
-SIP_PASSWORD=your_sip_password
-SIP_DOMAIN=your_sip_domain
+# FreeSWITCH ESL
+FREESWITCH_HOST=127.0.0.1
+FREESWITCH_PORT=9022
+FREESWITCH_PASSWORD=ClueCon
+
+# SIP Registration (VivPhone)
+SIP_USERNAME=your_username
+SIP_PASSWORD=your_password
+SIP_DOMAIN=51.195.161.145
 SIP_PORT=5060
-SIP_CALLER_ID=+1234567890
+SIP_PUBLIC_IP=your_public_ip
 ```
 
 ## 🚦 Running Locally
 
-### Development Mode (with auto-reload)
+### 1. Start Telephony Stack (Docker)
+
+```bash
+docker-compose up -d
+```
+
+### 2. Start Application
 
 ```bash
 npm run dev
-```
-
-### Production Build
-
-```bash
-npm run build
-npm start
 ```
 
 ## 📞 How It Works
@@ -87,163 +84,56 @@ npm start
 ### Streaming Pipeline
 
 ```
-User Audio → LiveKit → Deepgram STT → Groq LLM → Sarvam TTS → LiveKit → User Audio
+User Audio (RTP) → FreeSWITCH → Deepgram STT → Groq LLM → Sarvam TTS → FreeSWITCH → User Audio (RTP)
 ```
 
 ### Call Flow
 
-1. **Outbound Call**: Create room → Dial SIP → Join bot → Start pipeline
-2. **Inbound Call**: Accept SIP → Route to room → Join bot → Start pipeline
-3. **Conversation**: Audio streams through STT → LLM → TTS continuously
-4. **Barge-in**: System stops TTS immediately when user interrupts
-
-## 🔧 Configuration
-
-### LiveKit Cloud Setup
-
-1. Go to [LiveKit Cloud](https://cloud.livekit.io/)
-2. Create a new project
-3. Copy your WebSocket URL, API Key, and API Secret
-4. Add them to `.env`
-
-### SIP Trunk Configuration
-
-For production phone calls, configure SIP trunk:
-
-1. Obtain SIP credentials from your provider
-2. Add credentials to `.env`
-3. Configure LiveKit SIP following [their docs](https://docs.livekit.io/realtime/client/sip/)
-
-### Sarvam.ai Setup
-
-1. Sign up at Sarvam.ai
-2. Get your API key
-3. Add to `.env`
+1. **Registration**: Drachtio registers with VivPhone on startup.
+2. **Inbound Call**: VivPhone &rarr; Drachtio &rarr; Node App (emits `inboundCall`).
+3. **Outbound Call**: Node App &rarr; Drachtio &rarr; VivPhone.
+4. **Conversation**: PCM audio flows via UDP/RTP between FreeSWITCH and the Node app.
 
 ## 📁 Project Structure
 
 ```
 voiceagent/
-├── src/
-│   ├── config/           # Environment configuration
-│   ├── services/
-│   │   ├── stt/          # Deepgram Speech-to-Text
-│   │   ├── llm/          # Groq LLM
-│   │   ├── tts/          # Sarvam.ai Text-to-Speech
-│   │   ├── sip/          # SIP call handling
-│   │   ├── rooms/        # LiveKit room management
-│   │   └── conversation/ # Pipeline orchestration
-│   ├── utils/            # Logging, retry logic
-│   └── index.ts          # Application entry point
-├── logs/                 # Application logs
-├── .env                  # Environment variables (not in git)
-├── package.json          # Dependencies
-└── tsconfig.json         # TypeScript configuration
-```
-
-## 🚀 Deployment
-
-### Deploy to VPS (Ubuntu/Debian)
-
-```bash
-# 1. SSH into your VPS
-ssh user@your-vps-ip
-
-# 2. Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 3. Clone your repository
-git clone your-repo-url
-cd voiceagent
-
-# 4. Install dependencies
-npm install
-
-# 5. Configure environment
-cp .env.example .env
-nano .env  # Edit with your credentials
-
-# 6. Build the project
-npm run build
-
-# 7. Run with PM2 (process manager)
-sudo npm install -g pm2
-pm2 start dist/index.js --name voice-agent
-pm2 save
-pm2 startup
+├── frontend/
+│   ├── src/
+│   │   ├── services/
+│   │   │   ├── freeswitch/   # ESL & RTP Bridge
+│   │   │   ├── stt/          # Deepgram streaming
+│   │   │   ├── llm/          # Groq streaming
+│   │   │   ├── tts/          # Sarvam streaming
+│   │   │   ├── sip/          # High-level SIP service
+│   │   │   └── conversation/ # Pipeline orchestrator
+│   │   ├── utils/            # Logging, Digest Auth
+│   │   └── index.ts          # Express Server & Entry
+│   ├── public/               # Frontend Dialer UI
+│   ├── docker-compose.yml    # Telephony stack
+│   └── .env                  # Secrets
+└── logs/                     # System logs
 ```
 
 ## 📊 Monitoring
 
-View logs:
+View real-time logs:
 
 ```bash
-# Real-time logs
-pm2 logs voice-agent
+# App logs
+Get-Content logs/combined.log -Wait -Tail 50
 
-# Log files
-tail -f logs/combined.log
-tail -f logs/error.log
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**LiveKit Connection Fails**
-- Verify `LIVEKIT_URL` starts with `wss://`
-- Check API key and secret are correct
-- Ensure firewall allows WebSocket connections
-
-**Deepgram Errors**
-- Verify API key is valid
-- Check internet connectivity
-- Review logs for specific errors
-
-**Groq Rate Limits**
-- Implement request throttling
-- Upgrade Groq plan if needed
-
-**Sarvam TTS Timeout**
-- Check API key
-- Verify network connectivity
-- Monitor Sarvam.ai status page
-
-## 📝 API Usage
-
-### Making Outbound Calls
-
-```typescript
-import { VoiceAgentApp } from './index';
-
-const app = new VoiceAgentApp();
-
-// Make a call
-await app.makeOutboundCall('+1234567890');
-
-// End a call
-await app.endCall('room-name');
-
-// Get active calls
-const calls = app.getActiveCalls();
+# Docker logs
+docker logs -f drachtio-server
+docker logs -f freeswitch
 ```
 
 ## 🔐 Security
 
-- Never commit `.env` to version control
-- Rotate API keys regularly
-- Use HTTPS/WSS in production
-- Implement rate limiting
-- Monitor usage and costs
+- Never commit `.env` to version control.
+- Ensure only required ports (3000, 5062, 16384-16484) are exposed.
+- Periodically rotate SIP and API credentials.
 
 ## 📄 License
 
 MIT
-
-## 🤝 Support
-
-For issues or questions:
-- Check logs in `logs/` directory
-- Review LiveKit documentation
-- Contact API providers for service-specific issues

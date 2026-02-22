@@ -15,12 +15,7 @@
         <div class="card">
             <header>
                 <h1>AI Voice Agent</h1>
-                <p>Enter a number to start a conversation</p>
-                <div style="margin-top: 10px;">
-                    <a href="sip-manager.html"
-                        style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 500;">⚙️
-                        Manage SIP Trunks</a>
-                </div>
+                <p>Digital Assistant Console</p>
             </header>
 
             <main>
@@ -78,7 +73,7 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
             </main>
 
             <footer>
-                <p>Powered by LiveKit, Groq & Sarvam.ai</p>
+                <p>Powered by FreeSWITCH, Groq & Sarvam.ai</p>
             </footer>
         </div>
 
@@ -97,7 +92,7 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
         const callsList = document.getElementById('callsList');
         const activeCallsDiv = document.getElementById('activeCalls');
 
-        let currentRoom = null;
+        let currentCallId = null;
 
         function updateStatus(message, type = 'info') {
             statusDiv.classList.remove('hidden', 'success', 'error', 'pulse');
@@ -137,7 +132,7 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
                 }
 
                 if (data.success) {
-                    currentRoom = data.roomName;
+                    currentCallId = data.callId;
                     updateStatus('Call active', 'success');
                     callBtn.classList.add('hidden');
                     endBtn.classList.remove('hidden');
@@ -152,7 +147,7 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
         });
 
         endBtn.addEventListener('click', async () => {
-            if (!currentRoom) return;
+            if (!currentCallId) return;
 
             try {
                 endBtn.disabled = true;
@@ -161,10 +156,10 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
                 await fetch('/api/end-call', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ roomName: currentRoom })
+                    body: JSON.stringify({ callId: currentCallId })
                 });
 
-                currentRoom = null;
+                currentCallId = null;
                 updateStatus('Call ended');
                 setTimeout(() => statusDiv.classList.add('hidden'), 3000);
 
@@ -186,10 +181,10 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
 
                 if (data.activeCalls && data.activeCalls.length > 0) {
                     activeCallsDiv.classList.remove('hidden');
-                    callsList.innerHTML = data.activeCalls.map(room => `
+                    callsList.innerHTML = data.activeCalls.map(callId => `
                         <li>
-                            <span>${room}</span>
-                            <button onclick="endSpecificCall('${room}')">End</button>
+                            <span>${callId}</span>
+                            <button onclick="endSpecificCall('${callId}')">End</button>
                         </li>
                     `).join('');
                 } else {
@@ -200,14 +195,14 @@ Start the conversation by saying: "Hi, I'm Rachel from VivPhone. How can I help 
             }
         }
 
-        window.endSpecificCall = async (roomName) => {
+        window.endSpecificCall = async (callId) => {
             await fetch('/api/end-call', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ roomName })
+                body: JSON.stringify({ callId })
             });
-            if (roomName === currentRoom) {
-                currentRoom = null;
+            if (callId === currentCallId) {
+                currentCallId = null;
                 callBtn.classList.remove('hidden');
                 endBtn.classList.add('hidden');
                 updateStatus('Call ended');

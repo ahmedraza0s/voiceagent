@@ -6,14 +6,13 @@
 
 A comprehensive real-time AI Voice Agent backend system with:
 
-### Core Services (7 modules)
+### Core Services (6 modules)
 1. **Config Service** - Environment variable management with validation
 2. **Logger Service** - Winston-based production logging
 3. **Deepgram STT** - WebSocket streaming Speech-to-Text
 4. **Groq LLM** - Ultra-fast streaming completions
 5. **Sarvam.ai TTS** - Text-to-Speech with barge-in support
-6. **LiveKit Integration** - Real-time room management
-7. **SIP Service** - Inbound/outbound call handling
+6. **FreeSWITCH Integration** - Unified signaling and audio management via Drachtio
 
 ### Features Implemented
 - ✅ Async streaming architecture (no blocking)
