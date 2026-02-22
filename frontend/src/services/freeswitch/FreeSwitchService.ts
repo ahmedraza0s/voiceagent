@@ -158,7 +158,7 @@ export class FreeSwitchService extends EventEmitter {
         }
 
         const callId = providedCallId || `call-${Date.now()}`;
-        const sipUri = `sip:${phoneNumber}@${config.sip.domain}`;
+        const sipUri = `sip:${phoneNumber}@${config.sip.outbound.domain}`;
 
         logger.info('📞 Initiating outbound call via FreeSWITCH', { phoneNumber, callId, sipUri });
 
@@ -168,12 +168,12 @@ export class FreeSwitchService extends EventEmitter {
                 {
                     localSdp: localSdp,
                     headers: {
-                        'From': `<sip:${config.sip.callerId || config.sip.username}@${config.sip.domain}>`,
+                        'From': `<sip:${config.sip.outbound.callerId || config.sip.outbound.username}@${config.sip.outbound.domain}>`,
                         'X-Call-ID': callId,
                     },
                     auth: {
-                        username: config.sip.username,
-                        password: config.sip.password,
+                        username: config.sip.outbound.username,
+                        password: config.sip.outbound.password,
                     },
                 }
             );
@@ -328,19 +328,17 @@ export class FreeSwitchService extends EventEmitter {
      * SIP Registration Logic
      */
     private startRegistration() {
-        if (config.sip.username && config.sip.domain) {
+        if (config.sip.inbound.username && config.sip.inbound.domain) {
             this.register();
         } else {
-            logger.warn('SIP credentials missing, skipping registration via FreeSWITCH');
+            logger.warn('SIP inbound credentials missing, skipping registration via FreeSWITCH');
         }
     }
 
     private async register(authHeader?: string) {
         if (!this.isConnected) return;
 
-        const username = config.sip.username;
-        const password = config.sip.password;
-        const domain = config.sip.domain;
+        const { username, password, domain } = config.sip.inbound;
 
         const requestOpts: any = {
             method: 'REGISTER',

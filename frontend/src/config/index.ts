@@ -55,11 +55,20 @@ export const config = {
 
     // SIP Configuration
     sip: {
-        username: process.env.SIP_USERNAME || '',
-        password: process.env.SIP_PASSWORD || '',
-        domain: process.env.SIP_DOMAIN || '',
-        port: parseInt(process.env.SIP_PORT || '5060', 10),
-        callerId: process.env.SIP_CALLER_ID || '',
+        inbound: {
+            username: process.env.SIP_INBOUND_USERNAME || process.env.SIP_USERNAME || '',
+            password: process.env.SIP_INBOUND_PASSWORD || process.env.SIP_PASSWORD || '',
+            domain: process.env.SIP_INBOUND_DOMAIN || process.env.SIP_DOMAIN || '',
+            port: parseInt(process.env.SIP_INBOUND_PORT || process.env.SIP_PORT || '5060', 10),
+            proxy: process.env.SIP_INBOUND_PROXY || '',
+        },
+        outbound: {
+            username: process.env.SIP_OUTBOUND_USERNAME || process.env.SIP_USERNAME || '',
+            password: process.env.SIP_OUTBOUND_PASSWORD || process.env.SIP_PASSWORD || '',
+            domain: process.env.SIP_OUTBOUND_DOMAIN || process.env.SIP_DOMAIN || '',
+            port: parseInt(process.env.SIP_OUTBOUND_PORT || process.env.SIP_PORT || '5060', 10),
+            callerId: process.env.SIP_OUTBOUND_CALLER_ID || process.env.SIP_CALLER_ID || '',
+        },
     },
 
     // Application Configuration
