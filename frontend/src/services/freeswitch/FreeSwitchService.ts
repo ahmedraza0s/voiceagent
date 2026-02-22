@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import Srf from 'drachtio-srf';
 import logger from '../../utils/logger';
 import config from '../../config';
+import { calculateDigest, parseChallenge } from '../../utils/digest-auth';
 
 export interface CallInfo {
     callId: string;
@@ -28,6 +29,8 @@ export class FreeSwitchService extends EventEmitter {
     private lastErrorLogged: number = 0;
     private readonly ERROR_LOG_INTERVAL = 30000; // 30 seconds
     private hasLoggedError: boolean = false;
+    private registrationTimer: NodeJS.Timeout | null = null;
+    private registrationCallId: string = `reg-${Math.random().toString(36).substring(7)}`;
 
     constructor() {
         super();
@@ -56,6 +59,9 @@ export class FreeSwitchService extends EventEmitter {
             this.isConnected = true;
             this.hasLoggedError = false;
             this.emit('connected');
+
+            // Start SIP registration once connected to drachtio
+            this.startRegistration();
         });
 
         this.srf.on('error', (err: any) => {
@@ -316,5 +322,98 @@ export class FreeSwitchService extends EventEmitter {
      */
     get connected(): boolean {
         return this.isConnected;
+    }
+
+    /**
+     * SIP Registration Logic
+     */
+    private startRegistration() {
+        if (config.sip.username && config.sip.domain) {
+            this.register();
+        } else {
+            logger.warn('SIP credentials missing, skipping registration via FreeSWITCH');
+        }
+    }
+
+    private async register(authHeader?: string) {
+        if (!this.isConnected) return;
+
+        const username = config.sip.username;
+        const password = config.sip.password;
+        const domain = config.sip.domain;
+
+        const requestOpts: any = {
+            method: 'REGISTER',
+            uri: `sip:${domain}`,
+            headers: {
+                'To': `<sip:${username}@${domain}>`,
+                'From': `<sip:${username}@${domain}>`,
+                'Contact': `<sip:${username}@${process.env.SIP_PUBLIC_IP || '127.0.0.1'}:5062>`,
+                'Expires': '3600',
+                'Call-ID': this.registrationCallId,
+            }
+        };
+
+        if (authHeader) {
+            requestOpts.headers['Proxy-Authorization'] = authHeader;
+            requestOpts.headers['Authorization'] = authHeader;
+        }
+
+        try {
+            this.srf.request(requestOpts, (err: any, req: any) => {
+                if (err) {
+                    logger.error('Registration request failed', { error: err.message });
+                    return;
+                }
+
+                req.on('response', (res: any) => {
+                    if (res.status === 200) {
+                        logger.info(`✅ Successfully Registered with ${domain} via Drachtio`);
+                        const expires = parseInt(res.get('Expires') || '3600');
+                        this.scheduleRegistrationRefresh(expires);
+                    } else if ((res.status === 401 || res.status === 407) && !authHeader) {
+                        const challengeHeader = res.get('WWW-Authenticate') || res.get('Proxy-Authenticate');
+                        if (challengeHeader) {
+                            const challenge = parseChallenge(challengeHeader);
+                            const nc = '00000001';
+                            const cnonce = Math.random().toString(36).substring(7);
+                            const uri = `sip:${domain}`;
+                            const method = 'REGISTER';
+
+                            const responseDigest = calculateDigest(
+                                method,
+                                uri,
+                                username,
+                                password || '',
+                                challenge.realm,
+                                challenge.nonce,
+                                challenge.qop,
+                                cnonce,
+                                nc
+                            );
+
+                            let authHeaderString = `Digest username="${username}", realm="${challenge.realm}", nonce="${challenge.nonce}", uri="${uri}", response="${responseDigest}", algorithm="MD5"`;
+                            if (challenge.qop) authHeaderString += `, qop=${challenge.qop}, nc=${nc}, cnonce="${cnonce}"`;
+                            if (challenge.opaque) authHeaderString += `, opaque="${challenge.opaque}"`;
+
+                            // Re-register with auth
+                            this.register(authHeaderString);
+                        }
+                    } else {
+                        logger.error(`Registration failed with status ${res.status}`, { reason: res.reason });
+                        // Retry after 60s
+                        this.scheduleRegistrationRefresh(60);
+                    }
+                });
+            });
+        } catch (err: any) {
+            logger.error('Registration failed', { error: err.message });
+        }
+    }
+
+    private scheduleRegistrationRefresh(expires: number) {
+        if (this.registrationTimer) clearTimeout(this.registrationTimer);
+        const timeout = expires * 1000 * 0.9; // Refresh at 90% of expiry
+        this.registrationTimer = setTimeout(() => this.register(), timeout);
     }
 }

@@ -6,7 +6,6 @@ import config from './config';
 import logger from './utils/logger';
 import { FreeSwitchService } from './services/freeswitch/FreeSwitchService';
 import { SIPService } from './services/sip';
-import { SIPGateway } from './services/sip-gateway';
 import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
@@ -19,26 +18,12 @@ import { SarvamTTSService } from './services/tts/sarvam';
 class VoiceAgentApp {
     private freeSwitchService: FreeSwitchService;
     private sipService: SIPService;
-    private sipGateway: SIPGateway;
     private activePipelines: Map<string, ConversationPipeline> = new Map();
 
     constructor() {
         // Initialize FreeSWITCH ESL service
         this.freeSwitchService = new FreeSwitchService();
         this.sipService = new SIPService(this.freeSwitchService);
-
-        // Initialize Local SIP Gateway for Inbound Registration
-        this.sipGateway = new SIPGateway();
-        this.sipGateway.start().catch(err => {
-            logger.error('Failed to start SIP Gateway', { error: err.message });
-        });
-
-        // Wire inbound calls from local SIP Gateway
-        this.sipGateway.on('inboundCall', (data) => {
-            logger.info('📞 Inbound call received via local SIP Gateway', { callId: data.callId });
-            // The gateway handles its own pipeline, but we track it here
-            this.activePipelines.set(data.callId, (data.session as any).pipeline);
-        });
 
         // Wire outbound call connected event
         this.freeSwitchService.on('callConnected', async (data) => {
@@ -185,7 +170,6 @@ class VoiceAgentApp {
     }
 
     stop(): void {
-        this.sipGateway.stop();
         this.freeSwitchService.stop();
         this.freeSwitchService.removeAllListeners();
         for (const pipeline of this.activePipelines.values()) {
