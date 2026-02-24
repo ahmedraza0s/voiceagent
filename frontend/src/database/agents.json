@@ -15,14 +15,6 @@
       "voiceId": "amit",
       "createdAt": "2026-02-22T12:56:10.031Z",
       "updatedAt": "2026-02-22T12:56:10.031Z"
-    },
-    {
-      "id": "8f4f8545-7727-4540-a0ae-a134766f7cc0",
-      "name": "test",
-      "systemPrompt": "this is neha my name is neha ",
-      "voiceId": "neha",
-      "createdAt": "2026-02-24T08:03:28.032Z",
-      "updatedAt": "2026-02-24T08:03:28.032Z"
     }
   ],
   "defaultInboundAgentId": "69a37cb5-4e08-40e8-acb5-b0a519c56af8"

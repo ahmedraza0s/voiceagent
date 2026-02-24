@@ -13,17 +13,25 @@
 <body>
     <div class="app-layout">
         <!-- Sidebar Navigation -->
-        <nav class="sidebar">
-            <div class="sidebar-logo">AV</div>
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">AV</div>
+                <div class="sidebar-toggle" id="sidebarToggle">
+                    <span>☰</span>
+                </div>
+            </div>
             <div class="sidebar-nav">
                 <div class="nav-item active" data-view="dialer" data-tooltip="Dialer">
                     <span>📞</span>
+                    <span class="nav-label">Dialer</span>
                 </div>
                 <div class="nav-item" data-view="agents" data-tooltip="Agents">
                     <span>🤖</span>
+                    <span class="nav-label">Agents</span>
                 </div>
                 <div class="nav-item" data-view="sip" data-tooltip="SIP Settings">
                     <span>📡</span>
+                    <span class="nav-label">SIP Settings</span>
                 </div>
             </div>
         </nav>
@@ -44,7 +52,8 @@
             <div id="panel-agents" class="view-panel hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2>Agents</h2>
-                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="showNewAgentForm()">+ New</button>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;"
+                        onclick="showNewAgentForm()">+ New</button>
                 </div>
                 <p class="subtitle">Select agent to edit</p>
                 <div id="agentList" class="panel-list">
@@ -55,7 +64,8 @@
             <div id="panel-sip" class="view-panel hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2>SIP</h2>
-                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="showNewSipForm()">+ New</button>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;"
+                        onclick="showNewSipForm()">+ New</button>
                 </div>
                 <p class="subtitle">Manage SIP accounts</p>
                 <div id="sipList" class="panel-list">
@@ -145,7 +155,8 @@
                     <div class="input-group">
                         <label for="systemPrompt">System Prompt (The Agent's Identity)</label>
                         <textarea id="systemPrompt" style="min-height: 150px;"
-                            placeholder="Describe how the AI should behave and what it should say..." required></textarea>
+                            placeholder="Describe how the AI should behave and what it should say..."
+                            required></textarea>
                     </div>
 
                     <div class="controls" style="display: flex; gap: 1rem;">
@@ -232,7 +243,8 @@
         let activeCalls = [];
         let currentCallId = null;
 
-        // --- Elements ---
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
         const navItems = document.querySelectorAll('.nav-item');
         const viewPanels = document.querySelectorAll('.view-panel');
         const viewContents = document.querySelectorAll('.view-content');
@@ -244,7 +256,7 @@
         const endBtn = document.getElementById('endBtn');
         const statusDiv = document.getElementById('status');
         const statusText = document.getElementById('statusText');
-        
+
         const activeCallsList = document.getElementById('activeCalls');
         const noActiveCallsBox = document.getElementById('noActiveCalls');
         const agentList = document.getElementById('agentList');
@@ -264,10 +276,14 @@
         const inboundAgentSelect = document.getElementById('inboundAgentId');
 
         // --- Navigation Logic ---
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('expanded');
+        });
+
         navItems.forEach(item => {
             item.addEventListener('click', () => {
                 const view = item.getAttribute('data-view');
-                
+
                 // Update active state
                 navItems.forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
@@ -413,7 +429,7 @@
                 const response = await fetch('/api/calls');
                 const data = await response.json();
                 activeCalls = data.activeCalls || [];
-                
+
                 if (activeCalls.length > 0) {
                     noActiveCallsBox.classList.add('hidden');
                     activeCallsList.innerHTML = activeCalls.map(id => `
