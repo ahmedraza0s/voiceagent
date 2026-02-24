@@ -123,6 +123,8 @@ body {
     font-size: 1.4rem;
     white-space: nowrap;
     overflow: hidden;
+    text-decoration: none;
+    /* For <a> tags */
 }
 
 .sidebar.expanded .nav-item {
@@ -372,7 +374,7 @@ select:focus {
 
 /* Responsive */
 @media (max-width: 1024px) {
-    --panel-width: 260px;
+    :root { --panel-width: 260px; }
 
     .main-content {
         padding: 1.5rem;

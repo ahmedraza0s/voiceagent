@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP Settings | AI Voice</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">AV</div>
+                <div class="sidebar-toggle" id="sidebarToggle"><span>☰</span></div>
+            </div>
+            <div class="sidebar-nav">
+                <a href="dialer.html" class="nav-item"><span>📞</span><span class="nav-label">Dialer</span></a>
+                <a href="agents.html" class="nav-item"><span>🤖</span><span class="nav-label">Agents</span></a>
+                <a href="sip-settings.html" class="nav-item active"><span>📡</span><span class="nav-label">SIP
+                        Settings</span></a>
+            </div>
+        </nav>
+
+        <aside class="side-panel">
+            <div class="view-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>SIP</h2>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;"
+                        onclick="showNewSipForm()">+ New</button>
+                </div>
+                <p class="subtitle">Manage SIP accounts</p>
+                <div id="sipList" class="panel-list"></div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <section class="content-card">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1 id="sipFormTitle" style="font-size: 1.8rem;">Add SIP Number</h1>
+                    <p class="subtitle">Configure credentials and routing</p>
+                </header>
+
+                <form id="sipForm" class="sip-form">
+                    <input type="hidden" id="sipId">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="sip_name">Friendly Name</label>
+                            <input type="text" id="sip_name" placeholder="VivPhone Main" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="username">SIP Username</label>
+                            <input type="text" id="username" required>
+                        </div>
+                    </div>
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password">
+                        </div>
+                        <div class="input-group">
+                            <label for="domain">Domain</label>
+                            <input type="text" id="domain" required>
+                        </div>
+                    </div>
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="port">Port</label>
+                            <input type="number" id="port" value="5060" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="callerId">Caller ID</label>
+                            <input type="text" id="callerId">
+                        </div>
+                        <div class="input-group">
+                            <label for="inboundAgentId">Mapped Agent</label>
+                            <select id="inboundAgentId">
+                                <option value="">Default</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="controls" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="submit" id="saveSipBtn" class="btn btn-primary"><span>📡</span> Save SIP
+                            Number</button>
+                        <button type="button" id="deleteSipBtn" class="btn btn-danger hidden">Delete</button>
+                    </div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let sipAccounts = [];
+        let agents = [];
+        const sipForm = document.getElementById('sipForm');
+        const sipIdInput = document.getElementById('sipId');
+        const sipList = document.getElementById('sipList');
+        const inboundAgentSelect = document.getElementById('inboundAgentId');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        sidebarToggle.onclick = () => sidebar.classList.toggle('expanded');
+
+        async function loadData() {
+            const [sipData, agentData] = await Promise.all([
+                fetch('/api/sip-settings').then(r => r.json()),
+                fetch('/api/agents').then(r => r.json())
+            ]);
+            sipAccounts = sipData;
+            agents = agentData;
+
+            inboundAgentSelect.innerHTML = '<option value="">Global Default</option>' +
+                agents.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+            sipList.innerHTML = sipAccounts.map(s => `
+                <div class="panel-item ${sipIdInput.value === s.id ? 'active' : ''}" onclick="editSip('${s.id}')">
+                    <div class="panel-item-title">${s.name}</div>
+                    <div class="panel-item-meta">${s.username}@${s.domain}</div>
+                </div>
+            `).join('');
+        }
+
+        window.showNewSipForm = () => {
+            sipForm.reset();
+            sipIdInput.value = '';
+            loadData();
+        };
+
+        window.editSip = (id) => {
+            const s = sipAccounts.find(x => x.id === id);
+            if (!s) return;
+            sipIdInput.value = s.id;
+            document.getElementById('sip_name').value = s.name;
+            document.getElementById('username').value = s.username;
+            document.getElementById('domain').value = s.domain;
+            document.getElementById('port').value = s.port;
+            document.getElementById('callerId').value = s.callerId || '';
+            document.getElementById('inboundAgentId').value = s.inboundAgentId || '';
+            loadData();
+        };
+
+        sipForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                id: sipIdInput.value || undefined,
+                name: document.getElementById('sip_name').value,
+                username: document.getElementById('username').value,
+                domain: document.getElementById('domain').value,
+                port: parseInt(document.getElementById('port').value),
+                callerId: document.getElementById('callerId').value,
+                inboundAgentId: document.getElementById('inboundAgentId').value || undefined
+            };
+            await fetch('/api/sip-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            loadData();
+        };
+
+        loadData();
+    </script>
+</body>
+
+</html>

@@ -9,6 +9,7 @@ import { SIPService } from './services/sip';
 import { ConversationPipeline } from './services/conversation/pipeline';
 import { DeepgramSTTService } from './services/stt/deepgram';
 import { SarvamTTSService } from './services/tts/sarvam';
+import { GroqLLMService } from './services/llm/groq';
 import { agentService } from './services/agents/AgentService';
 import { sipSettingsService, SipSettings } from './services/sip/SipSettingsService';
 
@@ -443,6 +444,95 @@ app.get('/api/sip/env-config', (_req, res) => {
     ws.on('close', () => {
         logger.info('🧪 STT Test WebSocket closed');
         stt.disconnect();
+    });
+});
+
+// WebSocket: Full AI conversation for browser testing
+(app as any).ws('/ws/browser-talk', (ws: any, req: any) => {
+    logger.info('🧪 Browser Talk WebSocket connected');
+
+    const agentId = req.query.agentId as string;
+    const agent = agentId ? agentService.getAgent(agentId) : null;
+
+    const stt = new DeepgramSTTService();
+    const llm = new GroqLLMService();
+    const tts = new SarvamTTSService();
+
+    if (agent) {
+        llm.setSystemPrompt(agent.systemPrompt);
+        tts.setSpeaker(agent.voiceId);
+    } else if (req.query.systemPrompt) {
+        llm.setSystemPrompt(req.query.systemPrompt as string);
+        if (req.query.voiceId) tts.setSpeaker(req.query.voiceId as string);
+    }
+
+    let isProcessing = false;
+
+    const handleStreamingResponse = async (transcript: string | null) => {
+        if (isProcessing) return;
+        isProcessing = true;
+
+        try {
+            ws.send(JSON.stringify({ type: 'status', message: 'AI is thinking...' }));
+            const llmStream = llm.streamResponse(transcript);
+            const ttsStream = tts.streamSpeech(llmStream);
+
+            for await (const audioChunk of ttsStream) {
+                ws.send(audioChunk);
+            }
+
+            ws.send(JSON.stringify({ type: 'status', message: 'Listening...' }));
+        } catch (error: any) {
+            ws.send(JSON.stringify({ type: 'error', message: error.message }));
+        } finally {
+            isProcessing = false;
+        }
+    };
+
+    stt.on('connected', () => {
+        ws.send(JSON.stringify({ type: 'status', message: 'Connected' }));
+        handleStreamingResponse(null);
+    });
+
+    stt.on('transcript', (transcript: string) => {
+        ws.send(JSON.stringify({ type: 'transcript', text: transcript, isFinal: true }));
+        handleStreamingResponse(transcript);
+    });
+
+    stt.on('interim', (transcript: string) => {
+        ws.send(JSON.stringify({ type: 'transcript', text: transcript, isFinal: false }));
+        if (tts.playing) {
+            tts.stop();
+            ws.send(JSON.stringify({ type: 'barge-in' }));
+        }
+    });
+
+    stt.on('error', (error: any) => {
+        ws.send(JSON.stringify({ type: 'error', message: error.message }));
+    });
+
+    ws.on('message', (data: any) => {
+        if (Buffer.isBuffer(data)) {
+            stt.sendAudio(data);
+        } else if (typeof data === 'string') {
+            try {
+                const msg = JSON.parse(data);
+                if (msg.type === 'start') {
+                    stt.connect().catch(err => ws.send(JSON.stringify({ type: 'error', message: err.message })));
+                } else if (msg.type === 'ping') {
+                    ws.send(JSON.stringify({ type: 'pong' }));
+                }
+            } catch (e) {
+                // Ignore
+            }
+        }
+    });
+
+    ws.on('close', () => {
+        logger.info('🧪 Browser Talk WebSocket closed');
+        stt.disconnect();
+        tts.stop();
+        llm.clearHistory();
     });
 });
 

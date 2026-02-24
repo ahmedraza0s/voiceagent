@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Agents | AI Voice</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Integrated Talk UI Styles */
+        .talk-panel {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .talk-panel.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .visualizer {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            margin: 1rem 0;
+        }
+
+        .bar {
+            width: 3px;
+            height: 15px;
+            background: var(--primary);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+
+        .transcript-area {
+            max-height: 120px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .transcript-area b {
+            color: var(--primary);
+        }
+
+        .btn-talk {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-talk.recording {
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">AV</div>
+                <div class="sidebar-toggle" id="sidebarToggle"><span>☰</span></div>
+            </div>
+            <div class="sidebar-nav">
+                <a href="dialer.html" class="nav-item"><span>📞</span><span class="nav-label">Dialer</span></a>
+                <a href="agents.html" class="nav-item active"><span>🤖</span><span class="nav-label">Agents</span></a>
+                <a href="sip-settings.html" class="nav-item"><span>📡</span><span class="nav-label">SIP
+                        Settings</span></a>
+            </div>
+        </nav>
+
+        <aside class="side-panel">
+            <div class="view-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>Agents</h2>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;"
+                        onclick="showNewAgentForm()">+ New</button>
+                </div>
+                <p class="subtitle">Select agent to edit</p>
+                <div id="agentList" class="panel-list"></div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <section class="content-card">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1 id="agentFormTitle" style="font-size: 1.8rem;">Create New Agent</h1>
+                    <p class="subtitle">Configure AI personality and voice</p>
+                </header>
+
+                <form id="agentForm" class="agent-form">
+                    <input type="hidden" id="agentId">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="name">Agent Name</label>
+                            <input type="text" id="name" placeholder="Rachel" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="voiceId">Voice Model</label>
+                            <select id="voiceId">
+                                <optgroup label="Voices">
+                                    <option value="shubh" selected>Shubh (Default)</option>
+                                    <option value="rahul">Rahul</option>
+                                    <option value="ritu">Ritu</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="systemPrompt">System Prompt</label>
+                        <textarea id="systemPrompt" style="min-height: 120px;" placeholder="Identity..."
+                            required></textarea>
+                    </div>
+
+                    <div class="controls" style="display: flex; gap: 1rem;">
+                        <button type="submit" id="saveAgentBtn" class="btn btn-primary"><span>✨</span> Save
+                            Agent</button>
+                        <button type="button" id="talkBtnTrigger" class="btn btn-secondary hidden"><span>🎤</span> Talk
+                            to Agent</button>
+                        <button type="button" id="deleteAgentBtn" class="btn btn-danger hidden">Delete</button>
+                    </div>
+                </form>
+
+                <!-- Integrated Talk Panel -->
+                <div id="talkPanel" class="talk-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1rem;">Voice Testing</h3>
+                        <span id="statusText" style="font-size: 0.8rem; color: var(--text-muted);">Ready</span>
+                    </div>
+                    <div class="visualizer" id="visualizer"></div>
+                    <div id="transcript" class="transcript-area"><i>AI: Hi! Ready to test?</i></div>
+                    <button id="talkMainBtn" class="btn-talk"><span>🎤</span> Start Talking</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let agents = [];
+        const agentForm = document.getElementById('agentForm');
+        const agentIdInput = document.getElementById('agentId');
+        const agentList = document.getElementById('agentList');
+        const talkBtnTrigger = document.getElementById('talkBtnTrigger');
+        const talkPanel = document.getElementById('talkPanel');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        sidebarToggle.onclick = () => sidebar.classList.toggle('expanded');
+
+        async function loadAgents() {
+            agents = await fetch('/api/agents').then(r => r.json());
+            agentList.innerHTML = agents.map(a => `
+                <div class="panel-item ${agentIdInput.value === a.id ? 'active' : ''}" onclick="editAgent('${a.id}')">
+                    <div class="panel-item-title">${a.name}</div>
+                    <div class="panel-item-meta">${a.voiceId}</div>
+                </div>
+            `).join('');
+        }
+
+        window.showNewAgentForm = () => {
+            agentForm.reset();
+            agentIdInput.value = '';
+            talkBtnTrigger.classList.add('hidden');
+            talkPanel.classList.remove('active');
+            stopVoice();
+            loadAgents();
+        };
+
+        window.editAgent = (id) => {
+            const agent = agents.find(a => a.id === id);
+            if (!agent) return;
+            agentIdInput.value = agent.id;
+            document.getElementById('name').value = agent.name;
+            document.getElementById('voiceId').value = agent.voiceId;
+            document.getElementById('systemPrompt').value = agent.systemPrompt;
+            talkBtnTrigger.classList.remove('hidden');
+            loadAgents();
+        };
+
+        agentForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                id: agentIdInput.value || undefined,
+                name: document.getElementById('name').value,
+                voiceId: document.getElementById('voiceId').value,
+                systemPrompt: document.getElementById('systemPrompt').value
+            };
+            await fetch('/api/agents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            await loadAgents();
+            if (data.id) talkBtnTrigger.classList.remove('hidden');
+        };
+
+        // --- Voice Testing Logic ---
+        let ws, audioCtx, processor, microphone, isActive = false, scheduledTime = 0;
+        const talkMainBtn = document.getElementById('talkMainBtn');
+        const statusText = document.getElementById('statusText');
+        const transcriptArea = document.getElementById('transcript');
+        const visualizer = document.getElementById('visualizer');
+
+        for (let i = 0; i < 30; i++) {
+            const b = document.createElement('div'); b.className = 'bar'; visualizer.appendChild(b);
+        }
+        const bars = document.querySelectorAll('.bar');
+
+        talkBtnTrigger.onclick = () => {
+            talkPanel.classList.toggle('active');
+        };
+
+        talkMainBtn.onclick = async () => {
+            if (!audioCtx) {
+                await initAudio();
+                connectWS();
+            }
+            isActive = !isActive;
+            if (isActive) {
+                talkMainBtn.classList.add('recording');
+                talkMainBtn.innerHTML = '<span>⏹️</span> Stop Testing';
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } else {
+                stopVoice();
+            }
+        };
+
+        function stopVoice() {
+            isActive = false;
+            talkMainBtn.classList.remove('recording');
+            talkMainBtn.innerHTML = '<span>🎤</span> Start Talking';
+            statusText.textContent = 'Stationary';
+        }
+
+        async function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            microphone = audioCtx.createMediaStreamSource(stream);
+            processor = audioCtx.createScriptProcessor(4096, 1, 1);
+            processor.onaudioprocess = (e) => {
+                if (!isActive || !ws || ws.readyState !== 1) return;
+                const input = e.inputBuffer.getChannelData(0);
+                const pcm = new Int16Array(input.length);
+                for (let i = 0; i < input.length; i++) pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7FFF;
+                ws.send(pcm.buffer);
+                const vol = Math.max(...input.map(Math.abs));
+                bars.forEach(b => b.style.height = (10 + vol * 100 * (0.5 + Math.random())) + 'px');
+            };
+            microphone.connect(processor); processor.connect(audioCtx.destination);
+        }
+
+        function connectWS() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws/browser-talk?agentId=${agentIdInput.value}`);
+            ws.binaryType = 'arraybuffer';
+            ws.onopen = () => { statusText.textContent = 'Connected'; ws.send(JSON.stringify({ type: 'start' })); };
+            ws.onmessage = (e) => {
+                if (e.data instanceof ArrayBuffer) playPCM(e.data);
+                else {
+                    const m = JSON.parse(e.data);
+                    if (m.type === 'status') statusText.textContent = m.message;
+                    if (m.type === 'transcript') transcriptArea.innerHTML = `<div><b>${m.isFinal ? 'You' : '...'}</b>: ${m.text}</div>`;
+                    if (m.type === 'barge-in') scheduledTime = audioCtx.currentTime;
+                }
+            };
+        }
+
+        function playPCM(buf) {
+            const pcm = new Int16Array(buf);
+            const float = new Float32Array(pcm.length);
+            for (let i = 0; i < pcm.length; i++) float[i] = pcm[i] / 32768;
+            const buffer = audioCtx.createBuffer(1, float.length, 16000);
+            buffer.getChannelData(0).set(float);
+            const src = audioCtx.createBufferSource(); src.buffer = buffer; src.connect(audioCtx.destination);
+            const start = Math.max(scheduledTime, audioCtx.currentTime);
+            src.start(start); scheduledTime = start + buffer.duration;
+        }
+
+        loadAgents();
+    </script>
+</body>
+
+</html>
