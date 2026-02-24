@@ -4,30 +4,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Dialer - AI Voice Agent</title>
+    <title>AI Voice Agent Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
         rel="stylesheet">
 </head>
 
 <body>
-    <div class="container">
-        <nav class="nav-bar">
-            <h1>AI Dialer</h1>
-            <div class="nav-links">
-                <a href="index.html" class="nav-link active">Dialer</a>
-                <a href="agents.html" class="nav-link">Agents</a>
-                <a href="sip-settings.html" class="nav-link">SIP Settings</a>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-logo">AV</div>
+            <div class="sidebar-nav">
+                <div class="nav-item active" data-view="dialer" data-tooltip="Dialer">
+                    <span>📞</span>
+                </div>
+                <div class="nav-item" data-view="agents" data-tooltip="Agents">
+                    <span>🤖</span>
+                </div>
+                <div class="nav-item" data-view="sip" data-tooltip="SIP Settings">
+                    <span>📡</span>
+                </div>
             </div>
         </nav>
 
-        <div class="glass-card">
-            <header>
-                <h2>Start a Conversation</h2>
-                <p class="subtitle">Select account, assistant and enter number</p>
-            </header>
+        <!-- Side Panel (List View) -->
+        <aside class="side-panel">
+            <div id="panel-dialer" class="view-panel">
+                <h2>Dialer</h2>
+                <p class="subtitle">Active call sessions</p>
+                <div id="activeCalls" class="panel-list">
+                    <!-- Active calls will be listed here -->
+                </div>
+                <div id="noActiveCalls" class="status-box" style="font-size: 0.9rem; color: var(--text-muted);">
+                    No active sessions
+                </div>
+            </div>
 
-            <main>
+            <div id="panel-agents" class="view-panel hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>Agents</h2>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="showNewAgentForm()">+ New</button>
+                </div>
+                <p class="subtitle">Select agent to edit</p>
+                <div id="agentList" class="panel-list">
+                    <!-- Agents will be listed here -->
+                </div>
+            </div>
+
+            <div id="panel-sip" class="view-panel hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2>SIP</h2>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="showNewSipForm()">+ New</button>
+                </div>
+                <p class="subtitle">Manage SIP accounts</p>
+                <div id="sipList" class="panel-list">
+                    <!-- SIP accounts will be listed here -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content (Form View) -->
+        <main class="main-content">
+            <!-- Dialer Section -->
+            <section id="content-dialer" class="content-card view-content">
+                <header style="text-align: center; margin-bottom: 2.5rem;">
+                    <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Start a Call</h1>
+                    <p class="subtitle">Select account, assistant and enter number</p>
+                </header>
+
                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="input-group">
                         <label for="sipSelector">From (SIP Number)</label>
@@ -64,16 +109,134 @@
                 <div id="status" class="status-box hidden">
                     <span id="statusText">Ready</span>
                 </div>
-            </main>
-        </div>
+            </section>
 
-        <div id="activeCalls" class="glass-card hidden" style="margin-top: 2rem; padding: 1.5rem;">
-            <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Active Sessions</h3>
-            <ul id="callsList" style="list-style: none;"></ul>
-        </div>
+            <!-- Agent Section -->
+            <section id="content-agents" class="content-card view-content hidden">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1 id="agentFormTitle" style="font-size: 1.8rem;">Create New Agent</h1>
+                    <p class="subtitle">Configure AI personality and voice</p>
+                </header>
+
+                <form id="agentForm" class="agent-form">
+                    <input type="hidden" id="agentId">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="name">Agent Name</label>
+                            <input type="text" id="name" placeholder="e.g. Rachel from Support" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="voiceId">Voice Model</label>
+                            <select id="voiceId">
+                                <optgroup label="Male Voices">
+                                    <option value="shubh" selected>Shubh (Default)</option>
+                                    <option value="rahul">Rahul</option>
+                                    <option value="amit">Amit</option>
+                                </optgroup>
+                                <optgroup label="Female Voices">
+                                    <option value="ritu">Ritu</option>
+                                    <option value="priya">Priya</option>
+                                    <option value="neha">Neha</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="systemPrompt">System Prompt (The Agent's Identity)</label>
+                        <textarea id="systemPrompt" style="min-height: 150px;"
+                            placeholder="Describe how the AI should behave and what it should say..." required></textarea>
+                    </div>
+
+                    <div class="controls" style="display: flex; gap: 1rem;">
+                        <button type="submit" id="saveAgentBtn" class="btn btn-primary">
+                            <span>✨</span> Save Agent
+                        </button>
+                        <button type="button" id="deleteAgentBtn" class="btn btn-danger hidden">
+                            Delete Agent
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- SIP Section -->
+            <section id="content-sip" class="content-card view-content hidden">
+                <header style="text-align: center; margin-bottom: 2rem;">
+                    <h1 id="sipFormTitle" style="font-size: 1.8rem;">Add SIP Number</h1>
+                    <p class="subtitle">Configure credentials and routing</p>
+                </header>
+
+                <form id="sipForm" class="sip-form">
+                    <input type="hidden" id="sipId">
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="sip_name">Friendly Name</label>
+                            <input type="text" id="sip_name" placeholder="e.g. My VivPhone Number" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="username">SIP Username</label>
+                            <input type="text" id="username" placeholder="e.g. 17709924948" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="password">SIP Password</label>
+                            <input type="password" id="password" placeholder="Leave empty if not needed">
+                        </div>
+                        <div class="input-group">
+                            <label for="domain">SIP Domain / Host</label>
+                            <input type="text" id="domain" placeholder="e.g. vivp1.vivphone.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label for="port">SIP Port</label>
+                            <input type="number" id="port" value="5060" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="callerId">Caller ID (Number)</label>
+                            <input type="text" id="callerId" placeholder="e.g. 17709924948">
+                        </div>
+                        <div class="input-group">
+                            <label for="inboundAgentId">Mapped Agent (Inbound)</label>
+                            <select id="inboundAgentId">
+                                <option value="">Global Default</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="proxy">Outbound Proxy (Optional)</label>
+                        <input type="text" id="proxy" placeholder="e.g. sip.proxy.com">
+                    </div>
+
+                    <div class="controls" style="display: flex; gap: 1rem;">
+                        <button type="submit" id="saveSipBtn" class="btn btn-primary">
+                            <span>📡</span> Save SIP Number
+                        </button>
+                        <button type="button" id="deleteSipBtn" class="btn btn-danger hidden">
+                            Delete Account
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </main>
     </div>
 
     <script>
+        // --- State ---
+        let agents = [];
+        let sipAccounts = [];
+        let activeCalls = [];
+        let currentCallId = null;
+
+        // --- Elements ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const viewPanels = document.querySelectorAll('.view-panel');
+        const viewContents = document.querySelectorAll('.view-content');
+
         const phoneNumberInput = document.getElementById('phoneNumber');
         const agentSelector = document.getElementById('agentSelector');
         const sipSelector = document.getElementById('sipSelector');
@@ -81,43 +244,92 @@
         const endBtn = document.getElementById('endBtn');
         const statusDiv = document.getElementById('status');
         const statusText = document.getElementById('statusText');
-        const callsList = document.getElementById('callsList');
-        const activeCallsDiv = document.getElementById('activeCalls');
+        
+        const activeCallsList = document.getElementById('activeCalls');
+        const noActiveCallsBox = document.getElementById('noActiveCalls');
+        const agentList = document.getElementById('agentList');
+        const sipList = document.getElementById('sipList');
 
-        let currentCallId = null;
+        const agentForm = document.getElementById('agentForm');
+        const agentIdInput = document.getElementById('agentId');
+        const agentFormTitle = document.getElementById('agentFormTitle');
+        const saveAgentBtn = document.getElementById('saveAgentBtn');
+        const deleteAgentBtn = document.getElementById('deleteAgentBtn');
 
-        async function fetchSipAccounts() {
+        const sipForm = document.getElementById('sipForm');
+        const sipIdInput = document.getElementById('sipId');
+        const sipFormTitle = document.getElementById('sipFormTitle');
+        const saveSipBtn = document.getElementById('saveSipBtn');
+        const deleteSipBtn = document.getElementById('deleteSipBtn');
+        const inboundAgentSelect = document.getElementById('inboundAgentId');
+
+        // --- Navigation Logic ---
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const view = item.getAttribute('data-view');
+                
+                // Update active state
+                navItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                // Update panels
+                viewPanels.forEach(p => p.classList.add('hidden'));
+                document.getElementById(`panel-${view}`).classList.remove('hidden');
+
+                // Update contents
+                viewContents.forEach(c => c.classList.add('hidden'));
+                document.getElementById(`content-${view}`).classList.remove('hidden');
+
+                // Data fetching
+                if (view === 'agents') loadAgents();
+                if (view === 'sip') loadSipSettings();
+            });
+        });
+
+        // --- Dialer Logic ---
+        async function fetchInitialData() {
+            await Promise.all([loadSipSettings(true), loadAgents(true)]);
+            refreshCalls();
+        }
+
+        async function loadSipSettings(isInitial = false) {
             try {
-                const accounts = await fetch('/api/sip-settings').then(r => r.json());
-                if (accounts.length === 0) {
-                    sipSelector.innerHTML = '<option value="">No SIP numbers found. Add one in Setup!</option>';
-                    callBtn.disabled = true;
-                } else {
-                    sipSelector.innerHTML = accounts.map(s => `
-                        <option value="${s.id}">${s.name} (${s.username})</option>
-                    `).join('');
+                sipAccounts = await fetch('/api/sip-settings').then(r => r.json());
+                renderSipList();
+                if (isInitial) {
+                    if (sipAccounts.length === 0) {
+                        sipSelector.innerHTML = '<option value="">No SIP numbers found.</option>';
+                        callBtn.disabled = true;
+                    } else {
+                        sipSelector.innerHTML = sipAccounts.map(s => `
+                            <option value="${s.id}">${s.name} (${s.username})</option>
+                        `).join('');
+                    }
                 }
             } catch (error) {
-                sipSelector.innerHTML = '<option value="">Error loading SIP accounts</option>';
+                console.error('Error loading SIP:', error);
             }
         }
 
-        async function fetchAgents() {
+        async function loadAgents(isInitial = false) {
             try {
-                const agents = await fetch('/api/agents').then(r => r.json());
-
-                if (agents.length === 0) {
-                    agentSelector.innerHTML = '<option value="">No agents found. Create one in Setup!</option>';
-                    callBtn.disabled = true;
-                } else {
-                    agentSelector.innerHTML = agents.map(a => `
-                        <option value="${a.id}">
-                            ${a.name} (${a.voiceId})
-                        </option>
-                    `).join('');
+                agents = await fetch('/api/agents').then(r => r.json());
+                renderAgentList();
+                if (isInitial) {
+                    if (agents.length === 0) {
+                        agentSelector.innerHTML = '<option value="">No agents found.</option>';
+                        callBtn.disabled = true;
+                    } else {
+                        agentSelector.innerHTML = agents.map(a => `
+                            <option value="${a.id}">${a.name} (${a.voiceId})</option>
+                        `).join('');
+                    }
                 }
+                // Update inbound select in SIP form
+                inboundAgentSelect.innerHTML = '<option value="">Global Default</option>' +
+                    agents.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
             } catch (error) {
-                agentSelector.innerHTML = '<option value="">Error loading agents</option>';
+                console.error('Error loading agents:', error);
             }
         }
 
@@ -125,7 +337,6 @@
             statusDiv.className = 'status-box';
             statusDiv.classList.remove('hidden');
             statusText.textContent = message;
-
             if (type === 'pulse') statusDiv.classList.add('pulse');
             else if (type === 'success') statusDiv.style.color = 'var(--success)';
             else if (type === 'error') statusDiv.style.color = 'var(--danger)';
@@ -152,7 +363,6 @@
                 });
 
                 const data = await response.json();
-
                 if (response.status === 429) {
                     updateStatus('⚠️ Call already active', 'error');
                     callBtn.disabled = false;
@@ -202,16 +412,21 @@
             try {
                 const response = await fetch('/api/calls');
                 const data = await response.json();
-                if (data.activeCalls && data.activeCalls.length > 0) {
-                    activeCallsDiv.classList.remove('hidden');
-                    callsList.innerHTML = data.activeCalls.map(id => `
-                        <li style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--glass-border);">
-                            <span style="font-family: monospace; font-size: 0.9rem;">${id}</span>
-                            <button class="btn btn-danger" style="padding: 4px 12px; font-size: 0.8rem;" onclick="endSpecificCall('${id}')">End</button>
-                        </li>
+                activeCalls = data.activeCalls || [];
+                
+                if (activeCalls.length > 0) {
+                    noActiveCallsBox.classList.add('hidden');
+                    activeCallsList.innerHTML = activeCalls.map(id => `
+                        <div class="panel-item">
+                            <div class="panel-item-title">${id.substring(0, 8)}...</div>
+                            <div class="panel-item-meta">Active session</div>
+                            <button class="btn btn-danger" style="margin-top: 0.5rem; padding: 4px 8px; font-size: 0.7rem; width: 100%;" 
+                                onclick="endSpecificCall('${id}')">Terminate</button>
+                        </div>
                     `).join('');
                 } else {
-                    activeCallsDiv.classList.add('hidden');
+                    activeCallsList.innerHTML = '';
+                    noActiveCallsBox.classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Failed to fetch active calls', error);
@@ -233,10 +448,133 @@
             refreshCalls();
         };
 
+        // --- Agent Logic ---
+        function renderAgentList() {
+            agentList.innerHTML = agents.map(a => `
+                <div class="panel-item ${agentIdInput.value === a.id ? 'active' : ''}" onclick="editAgent('${a.id}')">
+                    <div class="panel-item-title">${a.name}</div>
+                    <div class="panel-item-meta">${a.voiceId}</div>
+                </div>
+            `).join('');
+        }
+
+        window.showNewAgentForm = () => {
+            agentIdInput.value = '';
+            agentForm.reset();
+            agentFormTitle.textContent = 'Create New Agent';
+            saveAgentBtn.innerHTML = '✨ Save Agent';
+            deleteAgentBtn.classList.add('hidden');
+            renderAgentList();
+        };
+
+        window.editAgent = async (id) => {
+            const agent = agents.find(a => a.id === id);
+            if (!agent) return;
+            agentIdInput.value = agent.id;
+            document.getElementById('name').value = agent.name;
+            document.getElementById('voiceId').value = agent.voiceId;
+            document.getElementById('systemPrompt').value = agent.systemPrompt;
+            agentFormTitle.textContent = 'Edit Agent';
+            saveAgentBtn.innerHTML = '✨ Update Agent';
+            deleteAgentBtn.classList.remove('hidden');
+            renderAgentList();
+        };
+
+        agentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                id: agentIdInput.value || undefined,
+                name: document.getElementById('name').value,
+                voiceId: document.getElementById('voiceId').value,
+                systemPrompt: document.getElementById('systemPrompt').value
+            };
+            await fetch('/api/agents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            await loadAgents(true);
+            showNewAgentForm();
+        });
+
+        deleteAgentBtn.addEventListener('click', async () => {
+            const id = agentIdInput.value;
+            if (!id || !confirm('Delete this agent?')) return;
+            await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+            await loadAgents(true);
+            showNewAgentForm();
+        });
+
+        // --- SIP Logic ---
+        function renderSipList() {
+            sipList.innerHTML = sipAccounts.map(s => `
+                <div class="panel-item ${sipIdInput.value === s.id ? 'active' : ''}" onclick="editSip('${s.id}')">
+                    <div class="panel-item-title">${s.name}</div>
+                    <div class="panel-item-meta">${s.username}@${s.domain}</div>
+                </div>
+            `).join('');
+        }
+
+        window.showNewSipForm = () => {
+            sipIdInput.value = '';
+            sipForm.reset();
+            sipFormTitle.textContent = 'Add SIP Number';
+            saveSipBtn.innerHTML = '📡 Save SIP Number';
+            deleteSipBtn.classList.add('hidden');
+            renderSipList();
+        };
+
+        window.editSip = (id) => {
+            const s = sipAccounts.find(x => x.id === id);
+            if (!s) return;
+            sipIdInput.value = s.id;
+            document.getElementById('sip_name').value = s.name;
+            document.getElementById('username').value = s.username;
+            document.getElementById('password').value = s.password || '';
+            document.getElementById('domain').value = s.domain;
+            document.getElementById('port').value = s.port;
+            document.getElementById('callerId').value = s.callerId || '';
+            document.getElementById('proxy').value = s.proxy || '';
+            document.getElementById('inboundAgentId').value = s.inboundAgentId || '';
+            sipFormTitle.textContent = 'Edit SIP Number';
+            saveSipBtn.innerHTML = '📡 Update SIP Number';
+            deleteSipBtn.classList.remove('hidden');
+            renderSipList();
+        };
+
+        sipForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                id: sipIdInput.value || undefined,
+                name: document.getElementById('sip_name').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value || undefined,
+                domain: document.getElementById('domain').value,
+                port: parseInt(document.getElementById('port').value, 10),
+                callerId: document.getElementById('callerId').value,
+                proxy: document.getElementById('proxy').value || undefined,
+                inboundAgentId: document.getElementById('inboundAgentId').value || undefined
+            };
+            await fetch('/api/sip-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            await loadSipSettings(true);
+            showNewSipForm();
+        });
+
+        deleteSipBtn.addEventListener('click', async () => {
+            const id = sipIdInput.value;
+            if (!id || !confirm('Delete this SIP account?')) return;
+            await fetch(`/api/sip-settings/${id}`, { method: 'DELETE' });
+            await loadSipSettings(true);
+            showNewSipForm();
+        });
+
+        // --- Init ---
+        fetchInitialData();
         setInterval(refreshCalls, 5000);
-        fetchSipAccounts();
-        fetchAgents();
-        refreshCalls();
     </script>
 </body>
 
