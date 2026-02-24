@@ -1,19 +1,6 @@
 {
   "sipSettings": [
     {
-      "name": "92 calling ",
-      "username": "00919240065378",
-      "domain": "vivap1.vivphone.com",
-      "port": 5060,
-      "callerId": "00919240065378",
-      "id": "c570da5e-374a-429b-8eb0-97812e814534",
-      "createdAt": "2026-02-22T12:54:54.014Z",
-      "updatedAt": "2026-02-24T09:09:01.905Z",
-      "password": "0oU&WgQn.48W",
-      "proxy": "51.195.161.145",
-      "inboundAgentId": "839499b8-0b07-4a68-8ec2-f5e9c38cb3ba"
-    },
-    {
       "name": "aus number",
       "username": "274019",
       "password": "CWs5tykPZ2",
@@ -24,6 +11,19 @@
       "createdAt": "2026-02-22T13:07:24.538Z",
       "updatedAt": "2026-02-22T13:08:19.773Z",
       "inboundAgentId": "e0d2aaa6-4a12-40d9-a3b7-5703c43c0d89"
+    },
+    {
+      "name": "00919240065378",
+      "username": "00919240065378",
+      "password": "0oU&WgQn.48W",
+      "domain": "vivap1.vivphone.com",
+      "port": 5060,
+      "callerId": "00919240065378",
+      "proxy": "51.195.161.145",
+      "id": "a49d38f6-6a71-480f-b592-27968d5eb2f6",
+      "createdAt": "2026-02-24T11:28:31.757Z",
+      "updatedAt": "2026-02-24T11:31:18.159Z",
+      "inboundAgentId": "2997e15c-688b-4b02-aa0b-99b8510e7592"
     }
   ]
 }

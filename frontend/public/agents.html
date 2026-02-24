@@ -143,36 +143,95 @@
 
                 <form id="agentForm" class="agent-form">
                     <input type="hidden" id="agentId">
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div class="input-group">
-                            <label for="name">Agent Name</label>
-                            <input type="text" id="name" placeholder="Rachel" required>
-                        </div>
-                        <div class="input-group">
-                            <label for="voiceId">Voice Agent</label>
-                            <select id="voiceId" required>
-                                <optgroup label="Male Voices">
-                                    <option value="shubh">Shubh</option>
-                                    <option value="amit">Amit</option>
-                                    <option value="rahul">Rahul</option>
-                                    <option value="manav">Manav</option>
-                                </optgroup>
-                                <optgroup label="Female Voices">
-                                    <option value="kavya">Kavya </option>
-                                    <option value="archana">Archana</option>
-                                    <option value="mayuri">Mayuri</option>
-                                    <option value="tanvi">Tanvi</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                    </div>
+
                     <div class="input-group">
-                        <label for="systemPrompt">System Prompt</label>
-                        <textarea id="systemPrompt" style="min-height: 120px;" placeholder="Identity..."
-                            required></textarea>
+                        <label for="name">Agent Name</label>
+                        <input type="text" id="name" placeholder="Rachel" required>
                     </div>
 
-                    <div class="controls" style="display: flex; gap: 1rem;">
+                    <div class="tabs-nav">
+                        <div class="tab-link active" onclick="openTab(event, 'tab-model')">Model</div>
+                        <div class="tab-link" onclick="openTab(event, 'tab-voice')">Voice Configuration</div>
+                    </div>
+
+                    <!-- Model Tab -->
+                    <div id="tab-model" class="tab-content active">
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="llmProvider">LLM Provider</label>
+                                <select id="llmProvider">
+                                    <option value="groq">Groq (Default)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="llmModel">Model</label>
+                                <select id="llmModel">
+                                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Versatile)</option>
+                                    <option value="llama-3.1-70b-versatile">Llama 3.1 70B (Versatile)</option>
+                                    <option value="llama-3.1-8b-instant">Llama 3.1 8B (Instant)</option>
+                                    <option value="llama3-70b-8192">Llama 3 70B (Legacy)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="maxTokens">Max Tokens</label>
+                                <input type="number" id="maxTokens" value="150" min="50" max="1000">
+                            </div>
+                            <div class="input-group">
+                                <label for="temperature">Temperature</label>
+                                <div class="range-group">
+                                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                                    <span id="tempValue" class="range-value">0.7</span>
+                                </div>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="systemPrompt">System Prompt</label>
+                                <textarea id="systemPrompt" style="min-height: 120px;" placeholder="Identity..."
+                                    required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Tab -->
+                    <div id="tab-voice" class="tab-content">
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="ttsProvider">TTS Provider</label>
+                                <select id="ttsProvider">
+                                    <option value="sarvam">Sarvam</option>
+                                    <option value="11labs" disabled>ElevenLabs (Coming Soon)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="voiceId">Voice Agent</label>
+                                <select id="voiceId" required>
+                                    <optgroup label="Male Voices (Bulbul v3)">
+                                        <option value="shubh">Shubh (Friendly)</option>
+                                        <option value="amit">Amit (Formal)</option>
+                                        <option value="sumit">Sumit (Balanced)</option>
+                                        <option value="rahul">Rahul (Composed)</option>
+                                        <option value="manan">Manan (Conversational)</option>
+                                    </optgroup>
+                                    <optgroup label="Female Voices (Bulbul v3)">
+                                        <option value="kavya">Kavya (Everyday)</option>
+                                        <option value="ritu">Ritu (Soft)</option>
+                                        <option value="pooja">Pooja (Encouraging)</option>
+                                        <option value="priya">Priya (Upbeat)</option>
+                                        <option value="shruti">Shruti (Melodious)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="ttsModel">Model (TTS)</label>
+                                <select id="ttsModel">
+                                    <option value="bulbul:v3">Bulbul v3 (Current)</option>
+                                    <option value="bulbul:v2">Bulbul v2 (Advanced)</option>
+                                    <option value="bulbul:v1">Bulbul v1 (Legacy)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls" style="display: flex; gap: 1rem; margin-top: 2rem;">
                         <button type="submit" id="saveAgentBtn" class="btn btn-primary"><span>✨</span> Save
                             Agent</button>
                         <button type="button" id="talkBtnTrigger" class="btn btn-secondary hidden"><span>🎤</span> Talk
@@ -213,17 +272,33 @@
             agentList.innerHTML = agents.map(a => `
                 <div class="panel-item ${agentIdInput.value === a.id ? 'active' : ''}" onclick="editAgent('${a.id}')">
                     <div class="panel-item-title">${a.name}</div>
-                    <div class="panel-item-meta">${a.voiceId}</div>
+                    <div class="panel-item-meta">${a.llmModel} / ${a.voiceId}</div>
                 </div>
             `).join('');
         }
 
+        window.openTab = (evt, tabId) => {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.remove('active'));
+            const links = document.querySelectorAll('.tab-link');
+            links.forEach(l => l.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        };
+
+        const tempInput = document.getElementById('temperature');
+        const tempValue = document.getElementById('tempValue');
+        tempInput.oninput = () => tempValue.textContent = tempInput.value;
+
         window.showNewAgentForm = () => {
             agentForm.reset();
             agentIdInput.value = '';
+            tempValue.textContent = '0.7';
             talkBtnTrigger.classList.add('hidden');
             deleteAgentBtn.classList.add('hidden');
             talkPanel.classList.remove('active');
+            // Reset to first tab
+            document.querySelectorAll('.tab-link')[0].click();
             stopVoice();
             loadAgents();
         };
@@ -233,8 +308,18 @@
             if (!agent) return;
             agentIdInput.value = agent.id;
             document.getElementById('name').value = agent.name;
-            document.getElementById('voiceId').value = agent.voiceId;
             document.getElementById('systemPrompt').value = agent.systemPrompt;
+            document.getElementById('voiceId').value = agent.voiceId;
+
+            // New fields
+            document.getElementById('llmProvider').value = agent.llmProvider || 'groq';
+            document.getElementById('llmModel').value = agent.llmModel || 'llama-3.3-70b-versatile';
+            document.getElementById('maxTokens').value = agent.maxTokens || 150;
+            document.getElementById('temperature').value = agent.temperature || 0.7;
+            tempValue.textContent = agent.temperature || 0.7;
+            document.getElementById('ttsProvider').value = agent.ttsProvider || 'sarvam';
+            document.getElementById('ttsModel').value = agent.ttsModel || 'bulbul:v3';
+
             talkBtnTrigger.classList.remove('hidden');
             deleteAgentBtn.classList.remove('hidden');
             loadAgents();
@@ -245,8 +330,14 @@
             const data = {
                 id: agentIdInput.value || undefined,
                 name: document.getElementById('name').value,
+                systemPrompt: document.getElementById('systemPrompt').value,
                 voiceId: document.getElementById('voiceId').value,
-                systemPrompt: document.getElementById('systemPrompt').value
+                llmProvider: document.getElementById('llmProvider').value,
+                llmModel: document.getElementById('llmModel').value,
+                maxTokens: document.getElementById('maxTokens').value,
+                temperature: document.getElementById('temperature').value,
+                ttsProvider: document.getElementById('ttsProvider').value,
+                ttsModel: document.getElementById('ttsModel').value
             };
             await fetch('/api/agents', {
                 method: 'POST',

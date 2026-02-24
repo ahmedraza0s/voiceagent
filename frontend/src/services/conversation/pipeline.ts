@@ -125,15 +125,24 @@ export class ConversationPipeline extends EventEmitter {
         callId: string,
         remoteRtpAddress?: string,
         remoteRtpPort?: number,
-        systemPrompt?: string,
-        voiceId?: string
+        agentConfig?: Partial<import('../agents/AgentService').AgentConfig>
     ): Promise<void> {
         try {
             logger.info('Starting conversation pipeline', { callId });
             this.callId = callId;
 
-            if (systemPrompt) this.llm.setSystemPrompt(systemPrompt);
-            if (voiceId) this.tts.setSpeaker(voiceId);
+            if (agentConfig) {
+                if (agentConfig.systemPrompt) this.llm.setSystemPrompt(agentConfig.systemPrompt);
+                if (agentConfig.voiceId) this.tts.setSpeaker(agentConfig.voiceId);
+
+                // New LLM settings
+                if (agentConfig.llmModel) this.llm.setModel(agentConfig.llmModel);
+                if (agentConfig.temperature !== undefined) this.llm.setTemperature(agentConfig.temperature);
+                if (agentConfig.maxTokens !== undefined) this.llm.setMaxTokens(agentConfig.maxTokens);
+
+                // New TTS settings
+                if (agentConfig.ttsModel) this.tts.setModel(agentConfig.ttsModel);
+            }
 
             // Connect to Deepgram STT
             await this.stt.connect();

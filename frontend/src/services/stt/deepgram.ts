@@ -12,6 +12,8 @@ export class DeepgramSTTService extends EventEmitter {
     private connection: any;
     private isConnected: boolean = false;
 
+    private audioBuffer: Buffer[] = [];
+
     constructor() {
         super();
         this.client = createClient(config.deepgram.apiKey);
@@ -21,71 +23,95 @@ export class DeepgramSTTService extends EventEmitter {
      * Start streaming transcription session
      */
     async connect(): Promise<void> {
-        try {
-            logger.info('Connecting to Deepgram STT...');
+        if (this.isConnected) return;
 
-            this.connection = this.client.listen.live({
-                model: 'nova-2',
-                language: 'en-US',
-                smart_format: true,
-                interim_results: true,
-                utterance_end_ms: 1000,
-                vad_events: true,
-                encoding: 'linear16',
-                sample_rate: 16000,
-            });
+        return new Promise((resolve, reject) => {
+            try {
+                logger.info('Connecting to Deepgram STT...');
 
-            // Handle transcript events
-            this.connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
-                const transcript = data.channel?.alternatives?.[0]?.transcript;
+                this.connection = this.client.listen.live({
+                    model: 'nova-2',
+                    language: 'en-US',
+                    punctuate: true,
+                    interim_results: true,
+                    utterance_end_ms: 1000,
+                    vad_events: true,
+                    encoding: 'linear16',
+                    sample_rate: 16000,
+                });
 
-                if (transcript && transcript.trim().length > 0) {
-                    const isFinal = data.is_final;
-
-                    logger.debug('STT result', {
-                        transcript,
-                        isFinal,
-                        confidence: data.channel?.alternatives?.[0]?.confidence,
-                    });
-
-                    if (isFinal) {
-                        // Emit final transcript
-                        this.emit('transcript', transcript);
-                    } else {
-                        // Emit interim transcript
-                        this.emit('interim', transcript);
+                const timeout = setTimeout(() => {
+                    if (!this.isConnected) {
+                        logger.error('Deepgram connection timeout after 5s');
+                        reject(new Error('Deepgram connection timeout'));
                     }
-                }
-            });
+                }, 5000);
 
-            // Handle connection events
-            this.connection.on(LiveTranscriptionEvents.Open, () => {
-                this.isConnected = true;
-                logger.info('Deepgram STT connected');
-                this.emit('connected');
-            });
+                // Handle connection events
+                this.connection.on(LiveTranscriptionEvents.Open, () => {
+                    clearTimeout(timeout);
+                    this.isConnected = true;
+                    logger.info('Deepgram STT connected');
 
-            this.connection.on(LiveTranscriptionEvents.Close, () => {
-                this.isConnected = false;
-                logger.info('Deepgram STT disconnected');
-                this.emit('disconnected');
-            });
+                    // Drain buffer
+                    if (this.audioBuffer.length > 0) {
+                        logger.info(`Draining ${this.audioBuffer.length} buffered audio chunks to Deepgram`);
+                        this.audioBuffer.forEach(chunk => this.connection.send(chunk));
+                        this.audioBuffer = [];
+                    }
 
-            this.connection.on(LiveTranscriptionEvents.Error, (error: any) => {
-                logger.error('Deepgram STT error', { error: error.message });
-                this.emit('error', error);
-            });
+                    this.emit('connected');
+                    resolve();
+                });
 
-            // Handle utterance end (user stopped speaking)
-            this.connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
-                logger.debug('Utterance end detected');
-                this.emit('utteranceEnd');
-            });
+                this.connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+                    clearTimeout(timeout);
+                    logger.error('Deepgram STT error', { error: error.message || error });
+                    this.emit('error', error);
+                    if (!this.isConnected) reject(error);
+                });
 
-        } catch (error) {
-            logger.error('Failed to connect to Deepgram', { error });
-            throw error;
-        }
+                // Handle transcript events
+                this.connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+                    const transcript = data.channel?.alternatives?.[0]?.transcript;
+
+                    if (transcript && transcript.trim().length > 0) {
+                        const isFinal = data.is_final;
+
+                        logger.debug('STT result', {
+                            transcript,
+                            isFinal,
+                            confidence: data.channel?.alternatives?.[0]?.confidence,
+                        });
+
+                        if (isFinal) {
+                            this.emit('transcript', transcript);
+                        } else {
+                            this.emit('interim', transcript);
+                        }
+                    }
+                });
+
+                this.connection.on(LiveTranscriptionEvents.Close, () => {
+                    this.isConnected = false;
+                    logger.info('Deepgram STT disconnected');
+                    this.emit('disconnected');
+                });
+
+                this.connection.on(LiveTranscriptionEvents.Metadata, (data: any) => {
+                    logger.info('Deepgram Metadata received', { data });
+                });
+
+                this.connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
+                    logger.debug('Utterance end detected');
+                    this.emit('utteranceEnd');
+                });
+
+            } catch (error) {
+                logger.error('Failed to initiate Deepgram connection', { error });
+                reject(error);
+            }
+        });
     }
 
     /**
@@ -94,7 +120,13 @@ export class DeepgramSTTService extends EventEmitter {
      */
     sendAudio(audioChunk: Buffer): void {
         if (!this.isConnected || !this.connection) {
-            logger.warn('Deepgram not connected, skipping audio send');
+            // Buffer up to 10 seconds of audio (approx 200 chunks if each is 50ms)
+            if (this.audioBuffer.length < 200) {
+                if (this.audioBuffer.length === 0) {
+                    logger.debug('Buffering audio until Deepgram connects...');
+                }
+                this.audioBuffer.push(audioChunk);
+            }
             return;
         }
 

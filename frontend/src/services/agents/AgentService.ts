@@ -9,6 +9,14 @@ export interface AgentConfig {
     name: string;
     systemPrompt: string;
     voiceId: string;
+    // LLM Settings
+    llmProvider: 'groq';
+    llmModel: string;
+    maxTokens: number;
+    temperature: number;
+    // TTS Settings
+    ttsProvider: 'sarvam';
+    ttsModel: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -64,13 +72,19 @@ export class AgentService {
         return this.readDb().agents.find(a => a.id === id);
     }
 
-    createAgent(name: string, systemPrompt: string, voiceId: string): AgentConfig {
+    createAgent(name: string, systemPrompt: string, voiceId: string, additionalConfig: Partial<AgentConfig> = {}): AgentConfig {
         const db = this.readDb();
         const newAgent: AgentConfig = {
             id: uuidv4(),
             name,
             systemPrompt,
             voiceId,
+            llmProvider: additionalConfig.llmProvider || 'groq',
+            llmModel: additionalConfig.llmModel || 'llama-3.3-70b-versatile',
+            maxTokens: additionalConfig.maxTokens || 150,
+            temperature: additionalConfig.temperature || 0.7,
+            ttsProvider: additionalConfig.ttsProvider || 'sarvam',
+            ttsModel: additionalConfig.ttsModel || 'bulbul:v3',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -89,7 +103,7 @@ export class AgentService {
             ...db.agents[index],
             ...updates,
             updatedAt: new Date().toISOString()
-        };
+        } as AgentConfig;
         this.writeDb(db);
         return db.agents[index];
     }

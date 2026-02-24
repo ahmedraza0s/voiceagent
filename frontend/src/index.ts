@@ -102,8 +102,16 @@ class VoiceAgentApp {
 
             if (agent) {
                 logger.info('Using agent configuration', { agentName: agent.name });
-                (pipeline as any).llm?.setSystemPrompt?.(agent.systemPrompt);
-                (pipeline as any).tts?.setSpeaker?.(agent.voiceId);
+                const llm = (pipeline as any).llm;
+                const tts = (pipeline as any).tts;
+
+                llm.setSystemPrompt(agent.systemPrompt);
+                llm.setModel(agent.llmModel);
+                llm.setTemperature(agent.temperature);
+                llm.setMaxTokens(agent.maxTokens);
+
+                tts.setSpeaker(agent.voiceId);
+                tts.setModel(agent.ttsModel);
             } else if (systemPrompt || voiceId) {
                 if (systemPrompt) (pipeline as any).llm?.setSystemPrompt?.(systemPrompt);
                 if (voiceId) (pipeline as any).tts?.setSpeaker?.(voiceId);
@@ -162,8 +170,16 @@ class VoiceAgentApp {
                     agentName: agent.name,
                     sipUsername: matchedSip?.username || 'unknown'
                 });
-                (pipeline as any).llm?.setSystemPrompt?.(agent.systemPrompt);
-                (pipeline as any).tts?.setSpeaker?.(agent.voiceId);
+                const llm = (pipeline as any).llm;
+                const tts = (pipeline as any).tts;
+
+                llm.setSystemPrompt(agent.systemPrompt);
+                llm.setModel(agent.llmModel);
+                llm.setTemperature(agent.temperature);
+                llm.setMaxTokens(agent.maxTokens);
+
+                tts.setSpeaker(agent.voiceId);
+                tts.setModel(agent.ttsModel);
             }
 
             this.activePipelines.set(callId, pipeline);
@@ -271,16 +287,22 @@ app.get('/api/agents/:id', (req, res) => {
 
 // Create/Update agent
 app.post('/api/agents', (req, res) => {
-    const { id, name, systemPrompt, voiceId } = req.body;
+    const { id, name, systemPrompt, voiceId, llmProvider, llmModel, maxTokens, temperature, ttsProvider, ttsModel } = req.body;
     if (!name || !systemPrompt || !voiceId) {
         return res.status(400).json({ error: 'Name, systemPrompt, and voiceId are required' });
     }
 
+    const agentData = {
+        name, systemPrompt, voiceId,
+        llmProvider, llmModel, maxTokens: Number(maxTokens),
+        temperature: Number(temperature), ttsProvider, ttsModel
+    };
+
     if (id) {
-        const updated = agentService.updateAgent(id, { name, systemPrompt, voiceId });
+        const updated = agentService.updateAgent(id, agentData);
         return updated ? res.json(updated) : res.status(404).json({ error: 'Agent not found' });
     } else {
-        const created = agentService.createAgent(name, systemPrompt, voiceId);
+        const created = agentService.createAgent(name, systemPrompt, voiceId, agentData);
         return res.json(created);
     }
 });
@@ -460,7 +482,12 @@ app.get('/api/sip/env-config', (_req, res) => {
 
     if (agent) {
         llm.setSystemPrompt(agent.systemPrompt);
+        llm.setModel(agent.llmModel);
+        llm.setTemperature(agent.temperature);
+        llm.setMaxTokens(agent.maxTokens);
+
         tts.setSpeaker(agent.voiceId);
+        tts.setModel(agent.ttsModel);
     } else if (req.query.systemPrompt) {
         llm.setSystemPrompt(req.query.systemPrompt as string);
         if (req.query.voiceId) tts.setSpeaker(req.query.voiceId as string);

@@ -16,6 +16,9 @@ export class GroqLLMService {
     private client: Groq;
     private conversationHistory: Message[] = [];
     private customSystemPrompt: string | null = null;
+    private model: string = config.groq.model;
+    private temperature: number = 0.7;
+    private maxTokens: number = 150;
 
     constructor() {
         this.client = new Groq({
@@ -31,6 +34,18 @@ export class GroqLLMService {
     setSystemPrompt(prompt: string): void {
         this.customSystemPrompt = prompt;
         this.resetToSystemPrompt();
+    }
+
+    setModel(model: string): void {
+        this.model = model;
+    }
+
+    setTemperature(temp: number): void {
+        this.temperature = temp;
+    }
+
+    setMaxTokens(tokens: number): void {
+        this.maxTokens = tokens;
     }
 
     /**
@@ -72,11 +87,11 @@ export class GroqLLMService {
             const stream = await retry(
                 () =>
                     this.client.chat.completions.create({
-                        model: config.groq.model,
+                        model: this.model,
                         messages: this.conversationHistory,
                         stream: true,
-                        temperature: 0.7,
-                        max_tokens: 150, // Keep responses short for voice
+                        temperature: this.temperature,
+                        max_tokens: this.maxTokens, // Keep responses short for voice
                         top_p: 1,
                     }),
                 {

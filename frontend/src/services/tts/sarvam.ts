@@ -28,6 +28,14 @@ export class SarvamTTSService extends EventEmitter {
     }
 
     /**
+     * Set a custom model
+     */
+    setModel(model: string): void {
+        this.model = model;
+        logger.info('🤖 Sarvam model updated', { model });
+    }
+
+    /**
      * Convert text to speech and return audio buffer
      * Uses streaming to minimize latency
      */
