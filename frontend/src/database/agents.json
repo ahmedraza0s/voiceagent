@@ -17,12 +17,12 @@
       "updatedAt": "2026-02-22T12:56:10.031Z"
     },
     {
-      "id": "d5a06675-6f99-469b-897a-21ba951d5fa7",
-      "name": "dsfds",
-      "systemPrompt": "adfdsf",
-      "voiceId": "shubh",
-      "createdAt": "2026-02-24T08:56:51.709Z",
-      "updatedAt": "2026-02-24T08:56:51.709Z"
+      "id": "839499b8-0b07-4a68-8ec2-f5e9c38cb3ba",
+      "name": "sayyed",
+      "systemPrompt": "my name is rahul",
+      "voiceId": "rahul",
+      "createdAt": "2026-02-24T09:07:45.820Z",
+      "updatedAt": "2026-02-24T09:07:45.820Z"
     }
   ],
   "defaultInboundAgentId": "69a37cb5-4e08-40e8-acb5-b0a519c56af8"

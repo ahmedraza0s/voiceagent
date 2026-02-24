@@ -195,6 +195,7 @@
         const agentList = document.getElementById('agentList');
         const talkBtnTrigger = document.getElementById('talkBtnTrigger');
         const talkPanel = document.getElementById('talkPanel');
+        const deleteAgentBtn = document.getElementById('deleteAgentBtn');
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
 
@@ -214,6 +215,7 @@
             agentForm.reset();
             agentIdInput.value = '';
             talkBtnTrigger.classList.add('hidden');
+            deleteAgentBtn.classList.add('hidden');
             talkPanel.classList.remove('active');
             stopVoice();
             loadAgents();
@@ -227,6 +229,7 @@
             document.getElementById('voiceId').value = agent.voiceId;
             document.getElementById('systemPrompt').value = agent.systemPrompt;
             talkBtnTrigger.classList.remove('hidden');
+            deleteAgentBtn.classList.remove('hidden');
             loadAgents();
         };
 
@@ -244,7 +247,22 @@
                 body: JSON.stringify(data)
             });
             await loadAgents();
-            if (data.id) talkBtnTrigger.classList.remove('hidden');
+            if (data.id) {
+                talkBtnTrigger.classList.remove('hidden');
+                deleteAgentBtn.classList.remove('hidden');
+            }
+        };
+
+        deleteAgentBtn.onclick = async () => {
+            const id = agentIdInput.value;
+            if (!id || !confirm('Are you sure you want to delete this agent?')) return;
+            try {
+                await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+                showNewAgentForm();
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('Failed to delete agent');
+            }
         };
 
         // --- Voice Testing Logic ---
