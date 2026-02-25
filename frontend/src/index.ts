@@ -156,10 +156,16 @@ class VoiceAgentApp {
             const toHeader = req.get('To') || '';
             const allSipSettings = sipSettingsService.listSettings();
 
+            logger.info('Identifying SIP account for inbound call', { toHeader, availableAccounts: allSipSettings.map(s => s.username) });
+
             // Try to find matching SIP setting by username or callerId in the To header
             const matchedSip = allSipSettings.find(s =>
                 toHeader.includes(s.username) || (s.callerId && toHeader.includes(s.callerId))
             );
+
+            if (!matchedSip) {
+                logger.warn('No SIP account matched for inbound call. Defaulting to first agent if available.', { toHeader });
+            }
 
             // Use mapped agent
             let agentId = matchedSip?.inboundAgentId;
@@ -187,7 +193,8 @@ class VoiceAgentApp {
             // Start bridge to get local port
             await (pipeline as any).bridge.start();
             const localPort = pipeline.localRtpPort;
-            const localIp = process.env.LOCAL_IP || '127.0.0.1';
+            // Use SIP_PUBLIC_IP if available (especially for Docker networking), otherwise local
+            const localIp = process.env.SIP_PUBLIC_IP || process.env.LOCAL_IP || '127.0.0.1';
             const localSdp = FreeSwitchService.generateSdp(localIp, localPort);
 
             // Answer via FreeSWITCH
@@ -494,25 +501,42 @@ app.get('/api/sip/env-config', (_req, res) => {
     }
 
     let isProcessing = false;
+    let abortController: AbortController | null = null;
 
     const handleStreamingResponse = async (transcript: string | null) => {
-        if (isProcessing) return;
+        // Abort previous turn if still running
+        if (abortController) {
+            abortController.abort();
+        }
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
         isProcessing = true;
 
         try {
             ws.send(JSON.stringify({ type: 'status', message: 'AI is thinking...' }));
-            const llmStream = llm.streamResponse(transcript);
-            const ttsStream = tts.streamSpeech(llmStream);
+            const llmStream = llm.streamResponse(transcript, signal);
+            const ttsStream = tts.streamSpeech(llmStream, signal);
 
             for await (const audioChunk of ttsStream) {
+                if (signal.aborted) break;
                 ws.send(audioChunk);
             }
 
-            ws.send(JSON.stringify({ type: 'status', message: 'Listening...' }));
+            if (!signal.aborted) {
+                ws.send(JSON.stringify({ type: 'status', message: 'Listening...' }));
+            }
         } catch (error: any) {
-            ws.send(JSON.stringify({ type: 'error', message: error.message }));
+            if (error.name === 'AbortError' || error.message?.includes('canceled')) {
+                logger.info('Browser talk stream aborted');
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: error.message }));
+            }
         } finally {
-            isProcessing = false;
+            if (abortController?.signal === signal) {
+                isProcessing = false;
+                abortController = null;
+            }
         }
     };
 
@@ -528,7 +552,8 @@ app.get('/api/sip/env-config', (_req, res) => {
 
     stt.on('interim', (transcript: string) => {
         ws.send(JSON.stringify({ type: 'transcript', text: transcript, isFinal: false }));
-        if (tts.playing) {
+        if (tts.playing || isProcessing) {
+            if (abortController) abortController.abort();
             tts.stop();
             ws.send(JSON.stringify({ type: 'barge-in' }));
         }
@@ -546,6 +571,11 @@ app.get('/api/sip/env-config', (_req, res) => {
                 const msg = JSON.parse(data);
                 if (msg.type === 'start') {
                     stt.connect().catch(err => ws.send(JSON.stringify({ type: 'error', message: err.message })));
+                } else if (msg.type === 'stop') {
+                    logger.info('Stop requested by browser');
+                    if (abortController) abortController.abort();
+                    tts.stop();
+                    isProcessing = false;
                 } else if (msg.type === 'ping') {
                     ws.send(JSON.stringify({ type: 'pong' }));
                 }
@@ -557,6 +587,7 @@ app.get('/api/sip/env-config', (_req, res) => {
 
     ws.on('close', () => {
         logger.info('🧪 Browser Talk WebSocket closed');
+        if (abortController) abortController.abort();
         stt.disconnect();
         tts.stop();
         llm.clearHistory();

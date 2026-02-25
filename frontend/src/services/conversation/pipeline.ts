@@ -21,6 +21,16 @@ export class ConversationPipeline extends EventEmitter {
     private isProcessing: boolean = false;
     private callId: string | null = null;
 
+    // Speaking Plans
+    private startSpeakingPlan: import('../agents/AgentService').StartSpeakingPlan | null = null;
+    private stopSpeakingPlan: import('../agents/AgentService').StopSpeakingPlan | null = null;
+
+    // Barge-in and Cancellation
+    private abortController: AbortController | null = null;
+    private currentResponseText: string = "";
+    private interimStartTime: number = 0;
+    private maxInterimWords: number = 0;
+
     constructor(localRtpPort: number = 0) {
         super();
         this.stt = new DeepgramSTTService();
@@ -29,6 +39,29 @@ export class ConversationPipeline extends EventEmitter {
         this.bridge = new FreeSwitchAudioBridge(localRtpPort);
 
         this.setupPipeline();
+    }
+
+    /**
+     * Abort current processing and save partial context
+     */
+    private abort(): void {
+        if (this.abortController) {
+            logger.info('Aborting current execution and saving partial context', {
+                partialText: this.currentResponseText.substring(0, 30) + '...'
+            });
+            this.abortController.abort();
+            this.abortController = null;
+        }
+
+        if (this.isProcessing && this.currentResponseText.trim().length > 0) {
+            // Save what the AI *was* saying to history so it remembers the context
+            this.llm.addToHistory('assistant', this.currentResponseText + " [interrupted]");
+        }
+
+        this.isProcessing = false;
+        this.currentResponseText = "";
+        this.tts.stop();
+        this.bridge.clearOutboundQueue();
     }
 
     /**
@@ -44,14 +77,52 @@ export class ConversationPipeline extends EventEmitter {
 
         // Step 2: Handle transcripts from STT
         this.stt.on('transcript', async (transcript: string) => {
+            // Reset barge-in tracking when a final transcript is received
+            this.interimStartTime = 0;
+            this.maxInterimWords = 0;
+
+            if (this.startSpeakingPlan && this.startSpeakingPlan.smartEndpointing) {
+                const words = transcript.trim().split(/\s+/);
+                const lastWord = words[words.length - 1] || '';
+                const hasPunctuation = /[?.!]$/.test(transcript.trim());
+                const isNumber = /^\d+$/.test(lastWord.replace(/[?.!]/g, ''));
+
+                let delay = this.startSpeakingPlan.onNoPunctuationSeconds;
+                if (hasPunctuation) delay = this.startSpeakingPlan.onPunctuationSeconds;
+                if (isNumber) delay = this.startSpeakingPlan.onNumberSeconds;
+
+                logger.info(`Turn-taking delay: ${delay}s`, { transcript, hasPunctuation, isNumber });
+                await new Promise(resolve => setTimeout(resolve, delay * 1000));
+            }
+
             await this.handleTranscript(transcript);
         });
 
         // Handle interim results for barge-in detection
         this.stt.on('interim', (interim: string) => {
-            if (this.tts.playing || this.isProcessing) {
-                logger.info('User speaking - signaling potential barge-in', { interim });
-                this.tts.stop();
+            const isPlaying = this.tts.playing || this.isProcessing;
+            if (!isPlaying) return;
+
+            if (!this.interimStartTime) this.interimStartTime = Date.now();
+
+            const words = interim.trim().split(/\s+/).length;
+            if (words > this.maxInterimWords) this.maxInterimWords = words;
+
+            const duration = (Date.now() - this.interimStartTime) / 1000;
+
+            const thresholdWords = this.stopSpeakingPlan?.interruptionThresholdWords ?? 2;
+            const thresholdSeconds = this.stopSpeakingPlan?.interruptionThresholdSeconds ?? 0.5;
+
+            if (this.maxInterimWords >= thresholdWords || duration >= thresholdSeconds) {
+                logger.info('Barge-in detected - interrupting AI immediately', {
+                    interim,
+                    words: this.maxInterimWords,
+                    duration: duration.toFixed(2),
+                    thresholdWords,
+                    thresholdSeconds
+                });
+
+                this.abort(); // Stop everything immediately
                 this.emit('bargeIn', interim);
             }
         });
@@ -73,6 +144,10 @@ export class ConversationPipeline extends EventEmitter {
      */
     async sayHello(): Promise<void> {
         logger.info('👋 Triggering initial AI greeting');
+        if (this.startSpeakingPlan?.waitSeconds) {
+            logger.info(`Waiting ${this.startSpeakingPlan.waitSeconds}s before greeting`);
+            await new Promise(resolve => setTimeout(resolve, this.startSpeakingPlan!.waitSeconds * 1000));
+        }
         await this.handleTranscript(null); // null triggers dynamic greeting from LLM
     }
 
@@ -80,36 +155,57 @@ export class ConversationPipeline extends EventEmitter {
      * Process transcript through LLM and TTS
      */
     private async handleTranscript(transcript: string | null): Promise<void> {
-        if (this.isProcessing) {
-            logger.warn('Already processing, skipping transcript');
-            return;
-        }
+        // Cancel existing processing if a new turn starts
+        this.abort();
 
         this.isProcessing = true;
+        this.abortController = new AbortController();
+        const signal = this.abortController.signal;
+        this.currentResponseText = "";
 
         try {
             logger.info('Processing transcript', { transcript });
             this.emit('transcriptReceived', transcript);
 
             // Step 3: Get streaming response from LLM
-            const llmStream = this.llm.streamResponse(transcript);
+            const llmStream = this.llm.streamResponse(transcript, signal);
+
+            // Create a wrapper generator to capture currentResponseText
+            const self = this;
+            async function* llmCaptureStream() {
+                for await (const chunk of llmStream) {
+                    if (signal.aborted) return;
+                    self.currentResponseText += chunk;
+                    yield chunk;
+                }
+            }
 
             // Step 4: Convert LLM response to speech
-            const ttsStream = this.tts.streamSpeech(llmStream);
+            const ttsStream = this.tts.streamSpeech(llmCaptureStream(), signal);
 
             // Step 5: Stream audio chunks to FreeSWITCH via RTP
             for await (const audioChunk of ttsStream) {
+                if (signal.aborted || !this.isProcessing) break;
                 this.bridge.pushAudio(audioChunk);
                 this.emit('audioChunk', audioChunk);
             }
 
-            logger.info('Response complete');
-            this.emit('responseComplete');
+            if (!signal.aborted) {
+                logger.info('Response complete');
+                this.emit('responseComplete');
+            }
 
         } catch (error: any) {
-            this.handleError('Pipeline', error);
+            if (error.name === 'AbortError' || error.message?.includes('canceled')) {
+                logger.info('Pipeline execution aborted');
+            } else {
+                this.handleError('Pipeline', error);
+            }
         } finally {
-            this.isProcessing = false;
+            if (this.abortController?.signal === signal) {
+                this.isProcessing = false;
+                this.abortController = null;
+            }
         }
     }
 
@@ -118,8 +214,7 @@ export class ConversationPipeline extends EventEmitter {
      * @param callId - FreeSWITCH call UUID or unique call identifier
      * @param remoteRtpAddress - FreeSWITCH media IP (from SDP)
      * @param remoteRtpPort - FreeSWITCH media port (from SDP)
-     * @param systemPrompt - optional system prompt override
-     * @param voiceId - optional TTS voice override
+     * @param agentConfig - optional agent configuration
      */
     async start(
         callId: string,
@@ -142,6 +237,10 @@ export class ConversationPipeline extends EventEmitter {
 
                 // New TTS settings
                 if (agentConfig.ttsModel) this.tts.setModel(agentConfig.ttsModel);
+
+                // Speaking plans
+                if (agentConfig.startSpeakingPlan) this.startSpeakingPlan = agentConfig.startSpeakingPlan;
+                if (agentConfig.stopSpeakingPlan) this.stopSpeakingPlan = agentConfig.stopSpeakingPlan;
             }
 
             // Connect to Deepgram STT
@@ -171,6 +270,7 @@ export class ConversationPipeline extends EventEmitter {
         try {
             logger.info('Stopping conversation pipeline', { callId: this.callId });
 
+            this.isProcessing = false;
             this.tts.stop();
             await this.stt.disconnect();
             this.llm.clearHistory();

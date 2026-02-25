@@ -4,6 +4,20 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../../utils/logger';
 
+export interface StartSpeakingPlan {
+    waitSeconds: number;
+    smartEndpointing: boolean;
+    onPunctuationSeconds: number;
+    onNoPunctuationSeconds: number;
+    onNumberSeconds: number;
+}
+
+export interface StopSpeakingPlan {
+    interruptionThresholdWords: number;
+    interruptionThresholdSeconds: number;
+    bargeInBackoffSeconds: number;
+}
+
 export interface AgentConfig {
     id: string;
     name: string;
@@ -17,6 +31,9 @@ export interface AgentConfig {
     // TTS Settings
     ttsProvider: 'sarvam';
     ttsModel: string;
+    // Speaking Plans
+    startSpeakingPlan: StartSpeakingPlan;
+    stopSpeakingPlan: StopSpeakingPlan;
     createdAt: string;
     updatedAt: string;
 }
@@ -85,6 +102,18 @@ export class AgentService {
             temperature: additionalConfig.temperature || 0.7,
             ttsProvider: additionalConfig.ttsProvider || 'sarvam',
             ttsModel: additionalConfig.ttsModel || 'bulbul:v3',
+            startSpeakingPlan: additionalConfig.startSpeakingPlan || {
+                waitSeconds: 0.4,
+                smartEndpointing: true,
+                onPunctuationSeconds: 0.8,
+                onNoPunctuationSeconds: 1.5,
+                onNumberSeconds: 1.0
+            },
+            stopSpeakingPlan: additionalConfig.stopSpeakingPlan || {
+                interruptionThresholdWords: 2,
+                interruptionThresholdSeconds: 0.5,
+                bargeInBackoffSeconds: 0.5
+            },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };

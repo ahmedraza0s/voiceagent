@@ -167,6 +167,14 @@ export class FreeSwitchAudioBridge extends EventEmitter {
     }
 
     /**
+     * Clear the outbound audio queue (barge-in)
+     */
+    clearOutboundQueue(): void {
+        this.outboundQueue = [];
+        logger.info('FreeSwitchAudioBridge: outbound queue cleared');
+    }
+
+    /**
      * Stop the bridge and close the socket
      */
     stop(): void {
@@ -175,7 +183,7 @@ export class FreeSwitchAudioBridge extends EventEmitter {
             clearInterval(this.pacerInterval);
             this.pacerInterval = null;
         }
-        this.outboundQueue = [];
+        this.clearOutboundQueue();
         try {
             this.socket.close();
         } catch (_) {

@@ -78,6 +78,31 @@
             animation: pulse 2s infinite;
         }
 
+        .talk-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .btn-mute {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.8rem;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+
+        .btn-mute.muted {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -152,6 +177,7 @@
                     <div class="tabs-nav">
                         <div class="tab-link active" onclick="openTab(event, 'tab-model')">Model</div>
                         <div class="tab-link" onclick="openTab(event, 'tab-voice')">Voice Configuration</div>
+                        <div class="tab-link" onclick="openTab(event, 'tab-conversation')">Conversation Settings</div>
                     </div>
 
                     <!-- Model Tab -->
@@ -231,6 +257,98 @@
                         </div>
                     </div>
 
+                    <!-- Conversation Tab -->
+                    <div id="tab-conversation" class="tab-content">
+                        <div class="form-grid">
+                            <div class="full-width">
+                                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--primary);">Start Speaking
+                                    Plan (Turn-taking)</h3>
+                            </div>
+                            <div class="input-group">
+                                <label for="waitSeconds"
+                                    data-tooltip="The delay before the agent's first greeting.">Initial Greeting Delay
+                                    (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="waitSeconds" min="0" max="5" step="0.1" value="0.4">
+                                    <span id="waitSecondsValue" class="range-value">0.4</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="smartEndpointing"
+                                    data-tooltip="If enabled, uses punctuation / numbers to detect when you're done.">Smart
+                                    Endpointing</label>
+                                <select id="smartEndpointing">
+                                    <option value="true">Enabled</option>
+                                    <option value="false">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="onPunctuationSeconds"
+                                    data-tooltip="Wait time after you end with a question mark or period.">Wait after
+                                    Punctuation (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="onPunctuationSeconds" min="0.1" max="3" step="0.1"
+                                        value="0.8">
+                                    <span id="onPunctuationSecondsValue" class="range-value">0.8</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="onNoPunctuationSeconds"
+                                    data-tooltip="Wait time if you stop talking without a clear sentence ending.">Wait
+                                    after No Punctuation (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="onNoPunctuationSeconds" min="0.5" max="5" step="0.1"
+                                        value="1.5">
+                                    <span id="onNoPunctuationSecondsValue" class="range-value">1.5</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="onNumberSeconds"
+                                    data-tooltip="Wait time after you speak a number (useful for zip codes/IDs).">Wait
+                                    after Number (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="onNumberSeconds" min="0.1" max="3" step="0.1" value="1.0">
+                                    <span id="onNumberSecondsValue" class="range-value">1.0</span>
+                                </div>
+                            </div>
+
+                            <div class="full-width" style="margin-top: 1rem;">
+                                <h3 style="font-size: 1rem; margin-bottom: 1rem; color: var(--primary);">Stop Speaking
+                                    Plan (Barge-in)</h3>
+                            </div>
+                            <div class="input-group">
+                                <label for="interruptionThresholdWords"
+                                    data-tooltip="Number of words you must speak to interrupt the AI.">Interruption Word
+                                    Threshold</label>
+                                <div class="range-group">
+                                    <input type="range" id="interruptionThresholdWords" min="1" max="10" step="1"
+                                        value="2">
+                                    <span id="interruptionThresholdWordsValue" class="range-value">2</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="interruptionThresholdSeconds"
+                                    data-tooltip="How long you must speak to interrupt the AI.">Interruption Time
+                                    Threshold (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="interruptionThresholdSeconds" min="0.1" max="2" step="0.1"
+                                        value="0.5">
+                                    <span id="interruptionThresholdSecondsValue" class="range-value">0.5</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="bargeInBackoffSeconds"
+                                    data-tooltip="Wait time before agent resumes if interrupted mistakenly.">Barge-in
+                                    Backoff (s)</label>
+                                <div class="range-group">
+                                    <input type="range" id="bargeInBackoffSeconds" min="0" max="5" step="0.1"
+                                        value="0.5">
+                                    <span id="bargeInBackoffSecondsValue" class="range-value">0.5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="controls" style="display: flex; gap: 1rem; margin-top: 2rem;">
                         <button type="submit" id="saveAgentBtn" class="btn btn-primary"><span>✨</span> Save
                             Agent</button>
@@ -248,7 +366,10 @@
                     </div>
                     <div class="visualizer" id="visualizer"></div>
                     <div id="transcript" class="transcript-area"><i>AI: Hi! Ready to test?</i></div>
-                    <button id="talkMainBtn" class="btn-talk"><span>🎤</span> Start Talking</button>
+                    <div class="talk-controls">
+                        <button id="talkMainBtn" class="btn-talk"><span>🎤</span> Start Talking</button>
+                        <button id="muteBtn" class="btn-mute" title="Mute Microphone"><span>🎤</span></button>
+                    </div>
                 </div>
             </section>
         </main>
@@ -290,10 +411,30 @@
         const tempValue = document.getElementById('tempValue');
         tempInput.oninput = () => tempValue.textContent = tempInput.value;
 
+        // Add input listeners for all sliders
+        const setupSlider = (id) => {
+            const input = document.getElementById(id);
+            const value = document.getElementById(id + 'Value');
+            if (input && value) {
+                input.oninput = () => value.textContent = input.value;
+            }
+        };
+
+        ['waitSeconds', 'onPunctuationSeconds', 'onNoPunctuationSeconds', 'onNumberSeconds',
+            'interruptionThresholdWords', 'interruptionThresholdSeconds', 'bargeInBackoffSeconds'].forEach(setupSlider);
+
         window.showNewAgentForm = () => {
             agentForm.reset();
             agentIdInput.value = '';
             tempValue.textContent = '0.7';
+            // Reset slider displays
+            ['waitSeconds', 'onPunctuationSeconds', 'onNoPunctuationSeconds', 'onNumberSeconds',
+                'interruptionThresholdWords', 'interruptionThresholdSeconds', 'bargeInBackoffSeconds'].forEach(id => {
+                    const input = document.getElementById(id);
+                    const value = document.getElementById(id + 'Value');
+                    if (input && value) value.textContent = input.value;
+                });
+
             talkBtnTrigger.classList.add('hidden');
             deleteAgentBtn.classList.add('hidden');
             talkPanel.classList.remove('active');
@@ -320,6 +461,28 @@
             document.getElementById('ttsProvider').value = agent.ttsProvider || 'sarvam';
             document.getElementById('ttsModel').value = agent.ttsModel || 'bulbul:v3';
 
+            // Speaking Plans
+            if (agent.startSpeakingPlan) {
+                document.getElementById('waitSeconds').value = agent.startSpeakingPlan.waitSeconds;
+                document.getElementById('waitSecondsValue').textContent = agent.startSpeakingPlan.waitSeconds;
+                document.getElementById('smartEndpointing').value = String(agent.startSpeakingPlan.smartEndpointing);
+                document.getElementById('onPunctuationSeconds').value = agent.startSpeakingPlan.onPunctuationSeconds;
+                document.getElementById('onPunctuationSecondsValue').textContent = agent.startSpeakingPlan.onPunctuationSeconds;
+                document.getElementById('onNoPunctuationSeconds').value = agent.startSpeakingPlan.onNoPunctuationSeconds;
+                document.getElementById('onNoPunctuationSecondsValue').textContent = agent.startSpeakingPlan.onNoPunctuationSeconds;
+                document.getElementById('onNumberSeconds').value = agent.startSpeakingPlan.onNumberSeconds;
+                document.getElementById('onNumberSecondsValue').textContent = agent.startSpeakingPlan.onNumberSeconds;
+            }
+
+            if (agent.stopSpeakingPlan) {
+                document.getElementById('interruptionThresholdWords').value = agent.stopSpeakingPlan.interruptionThresholdWords;
+                document.getElementById('interruptionThresholdWordsValue').textContent = agent.stopSpeakingPlan.interruptionThresholdWords;
+                document.getElementById('interruptionThresholdSeconds').value = agent.stopSpeakingPlan.interruptionThresholdSeconds;
+                document.getElementById('interruptionThresholdSecondsValue').textContent = agent.stopSpeakingPlan.interruptionThresholdSeconds;
+                document.getElementById('bargeInBackoffSeconds').value = agent.stopSpeakingPlan.bargeInBackoffSeconds;
+                document.getElementById('bargeInBackoffSecondsValue').textContent = agent.stopSpeakingPlan.bargeInBackoffSeconds;
+            }
+
             talkBtnTrigger.classList.remove('hidden');
             deleteAgentBtn.classList.remove('hidden');
             loadAgents();
@@ -334,11 +497,24 @@
                 voiceId: document.getElementById('voiceId').value,
                 llmProvider: document.getElementById('llmProvider').value,
                 llmModel: document.getElementById('llmModel').value,
-                maxTokens: document.getElementById('maxTokens').value,
-                temperature: document.getElementById('temperature').value,
+                maxTokens: parseInt(document.getElementById('maxTokens').value),
+                temperature: parseFloat(document.getElementById('temperature').value),
                 ttsProvider: document.getElementById('ttsProvider').value,
-                ttsModel: document.getElementById('ttsModel').value
+                ttsModel: document.getElementById('ttsModel').value,
+                startSpeakingPlan: {
+                    waitSeconds: parseFloat(document.getElementById('waitSeconds').value),
+                    smartEndpointing: document.getElementById('smartEndpointing').value === 'true',
+                    onPunctuationSeconds: parseFloat(document.getElementById('onPunctuationSeconds').value),
+                    onNoPunctuationSeconds: parseFloat(document.getElementById('onNoPunctuationSeconds').value),
+                    onNumberSeconds: parseFloat(document.getElementById('onNumberSeconds').value)
+                },
+                stopSpeakingPlan: {
+                    interruptionThresholdWords: parseInt(document.getElementById('interruptionThresholdWords').value),
+                    interruptionThresholdSeconds: parseFloat(document.getElementById('interruptionThresholdSeconds').value),
+                    bargeInBackoffSeconds: parseFloat(document.getElementById('bargeInBackoffSeconds').value)
+                }
             };
+
             await fetch('/api/agents', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -364,8 +540,11 @@
         };
 
         // --- Voice Testing Logic ---
-        let ws, audioCtx, processor, microphone, isActive = false, scheduledTime = 0;
+        let ws, audioCtx, processor, microphone, isActive = false, isMuted = false, scheduledTime = 0;
+        let activeAudioNodes = []; // Track active buffers to stop them on barge-in
+
         const talkMainBtn = document.getElementById('talkMainBtn');
+        const muteBtn = document.getElementById('muteBtn');
         const statusText = document.getElementById('statusText');
         const transcriptArea = document.getElementById('transcript');
         const visualizer = document.getElementById('visualizer');
@@ -379,10 +558,23 @@
             talkPanel.classList.toggle('active');
         };
 
+        muteBtn.onclick = () => {
+            isMuted = !isMuted;
+            muteBtn.classList.toggle('muted', isMuted);
+            muteBtn.innerHTML = isMuted ? '<span>🔇</span>' : '<span>🎤</span>';
+            muteBtn.title = isMuted ? 'Unmute Microphone' : 'Mute Microphone';
+        };
+
         talkMainBtn.onclick = async () => {
             if (!audioCtx) {
-                await initAudio();
-                connectWS();
+                try {
+                    await initAudio();
+                    connectWS();
+                } catch (err) {
+                    console.error('Audio init failed:', err);
+                    alert('Could not access microphone. Please check permissions.');
+                    return;
+                }
             }
             isActive = !isActive;
             if (isActive) {
@@ -399,21 +591,48 @@
             talkMainBtn.classList.remove('recording');
             talkMainBtn.innerHTML = '<span>🎤</span> Start Talking';
             statusText.textContent = 'Stationary';
+
+            // Clear any playing audio immediately
+            clearActiveAudio();
+
+            // Notify backend to stop
+            if (ws && ws.readyState === 1) {
+                ws.send(JSON.stringify({ type: 'stop' }));
+            }
+        }
+
+        function clearActiveAudio() {
+            activeAudioNodes.forEach(src => {
+                try { src.stop(); } catch (e) { }
+            });
+            activeAudioNodes = [];
+            scheduledTime = audioCtx ? audioCtx.currentTime : 0;
         }
 
         async function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Enable AEC, Noise Suppression, and AGC to fix echo
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
             microphone = audioCtx.createMediaStreamSource(stream);
             processor = audioCtx.createScriptProcessor(4096, 1, 1);
             processor.onaudioprocess = (e) => {
-                if (!isActive || !ws || ws.readyState !== 1) return;
                 const input = e.inputBuffer.getChannelData(0);
+                const vol = Math.max(...input.map(Math.abs));
+                bars.forEach(b => b.style.height = (10 + vol * 100 * (0.5 + Math.random())) + 'px');
+
+                if (!isActive || !ws || ws.readyState !== 1 || isMuted) return;
+
                 const pcm = new Int16Array(input.length);
                 for (let i = 0; i < input.length; i++) pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7FFF;
                 ws.send(pcm.buffer);
-                const vol = Math.max(...input.map(Math.abs));
-                bars.forEach(b => b.style.height = (10 + vol * 100 * (0.5 + Math.random())) + 'px');
             };
             microphone.connect(processor); processor.connect(audioCtx.destination);
         }
@@ -429,20 +648,37 @@
                     const m = JSON.parse(e.data);
                     if (m.type === 'status') statusText.textContent = m.message;
                     if (m.type === 'transcript') transcriptArea.innerHTML = `<div><b>${m.isFinal ? 'You' : '...'}</b>: ${m.text}</div>`;
-                    if (m.type === 'barge-in') scheduledTime = audioCtx.currentTime;
+                    if (m.type === 'barge-in') {
+                        clearActiveAudio();
+                    }
                 }
+            };
+            ws.onclose = () => {
+                statusText.textContent = 'Disconnected';
+                if (isActive) stopVoice();
             };
         }
 
         function playPCM(buf) {
+            if (!isActive) return;
             const pcm = new Int16Array(buf);
             const float = new Float32Array(pcm.length);
             for (let i = 0; i < pcm.length; i++) float[i] = pcm[i] / 32768;
             const buffer = audioCtx.createBuffer(1, float.length, 16000);
             buffer.getChannelData(0).set(float);
-            const src = audioCtx.createBufferSource(); src.buffer = buffer; src.connect(audioCtx.destination);
+
+            const src = audioCtx.createBufferSource();
+            src.buffer = buffer;
+            src.connect(audioCtx.destination);
+
             const start = Math.max(scheduledTime, audioCtx.currentTime);
-            src.start(start); scheduledTime = start + buffer.duration;
+            src.start(start);
+            scheduledTime = start + buffer.duration;
+
+            activeAudioNodes.push(src);
+            src.onended = () => {
+                activeAudioNodes = activeAudioNodes.filter(n => n !== src);
+            };
         }
 
         loadAgents();

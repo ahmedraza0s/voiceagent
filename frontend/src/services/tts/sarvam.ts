@@ -39,7 +39,7 @@ export class SarvamTTSService extends EventEmitter {
      * Convert text to speech and return audio buffer
      * Uses streaming to minimize latency
      */
-    async generateSpeech(text: string): Promise<Buffer> {
+    async generateSpeech(text: string, signal?: AbortSignal): Promise<Buffer> {
         try {
             logger.info('Generating speech', { text: text.substring(0, 50) });
 
@@ -63,6 +63,7 @@ export class SarvamTTSService extends EventEmitter {
                             },
                             responseType: 'arraybuffer',
                             timeout: 30000, // 30 second timeout
+                            signal, // Pass AbortSignal to axios
                         }
                     ),
                 {
@@ -92,6 +93,10 @@ export class SarvamTTSService extends EventEmitter {
             logger.info('Speech generated (raw)', { size: audioBuffer.length });
             return audioBuffer;
         } catch (error: any) {
+            if (axios.isCancel(error)) {
+                logger.info('Sarvam API call canceled');
+                throw error;
+            }
             logger.error('Sarvam TTS error', {
                 error: error.message,
                 response: error.response?.data,
@@ -104,7 +109,7 @@ export class SarvamTTSService extends EventEmitter {
      * Stream text chunks to TTS and emit audio chunks
      * Optimized for low latency by processing text as it arrives
      */
-    async *streamSpeech(textChunks: AsyncGenerator<string>): AsyncGenerator<Buffer> {
+    async *streamSpeech(textChunks: AsyncGenerator<string>, signal?: AbortSignal): AsyncGenerator<Buffer> {
         this.isPlaying = true;
         this.shouldStop = false;
 
@@ -114,8 +119,8 @@ export class SarvamTTSService extends EventEmitter {
         try {
             for await (const chunk of textChunks) {
                 // Check if barge-in requested
-                if (this.shouldStop) {
-                    logger.info('TTS stopped due to barge-in');
+                if (this.shouldStop || signal?.aborted) {
+                    logger.info('TTS stream stopped/aborted');
                     this.isPlaying = false;
                     return;
                 }
@@ -129,18 +134,19 @@ export class SarvamTTSService extends EventEmitter {
                     buffer = buffer.substring(match.index! + match[0].length);
 
                     // Generate speech for the sentence
-                    const audio = await this.generateSpeech(sentence.trim());
+                    const audio = await this.generateSpeech(sentence.trim(), signal);
                     yield audio;
                 }
             }
 
             // Process remaining text
-            if (buffer.trim().length > 0 && !this.shouldStop) {
-                const audio = await this.generateSpeech(buffer.trim());
+            if (buffer.trim().length > 0 && !this.shouldStop && !signal?.aborted) {
+                const audio = await this.generateSpeech(buffer.trim(), signal);
                 yield audio;
             }
 
         } catch (error) {
+            if (axios.isCancel(error)) return;
             logger.error('Error in TTS streaming', { error });
             throw error;
         } finally {

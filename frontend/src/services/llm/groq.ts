@@ -64,7 +64,7 @@ export class GroqLLMService {
      * Generate streaming response from user input
      * Returns async generator that yields text chunks as they arrive
      */
-    async *streamResponse(userInput: string | null): AsyncGenerator<string, void, unknown> {
+    async *streamResponse(userInput: string | null, signal?: AbortSignal): AsyncGenerator<string, void, unknown> {
         // If userInput is null, we are generating an initial greeting based on system prompt
         if (userInput) {
             this.conversationHistory.push({
@@ -102,6 +102,11 @@ export class GroqLLMService {
 
             // Stream chunks as they arrive
             for await (const chunk of stream) {
+                if (signal?.aborted) {
+                    logger.info('LLM stream aborted');
+                    return;
+                }
+
                 const content = chunk.choices[0]?.delta?.content;
 
                 if (content) {

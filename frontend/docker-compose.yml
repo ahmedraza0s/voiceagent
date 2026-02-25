@@ -2,11 +2,11 @@ services:
   drachtio:
     image: drachtio/drachtio-server:latest
     container_name: drachtio-server
-    command: drachtio --contact "sip:0.0.0.0:5062" --admin-port 9022 --loglevel debug --secret ClueCon
+    command: drachtio --contact "sip:0.0.0.0:5070" --admin-port 9022 --loglevel debug --secret ClueCon
     ports:
       - "9022:9022/tcp"
-      - "5062:5062/udp"
-      - "5062:5062/tcp"
+      - "5070:5070/udp"
+      - "5070:5070/tcp"
     networks:
       - telephony
 

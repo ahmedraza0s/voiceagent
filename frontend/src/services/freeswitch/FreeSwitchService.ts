@@ -77,6 +77,7 @@ export class FreeSwitchService extends EventEmitter {
 
         // Handle inbound SIP INVITEs
         this.srf.invite((req: any, res: any) => {
+            logger.info('🚀 SRF INVITE HANDLER TRIGGERED');
             this.handleInboundInvite(req, res);
         });
     }
@@ -109,7 +110,17 @@ export class FreeSwitchService extends EventEmitter {
      */
     private async handleInboundInvite(req: any, res: any): Promise<void> {
         const callId = req.get('Call-ID') || `inbound-${Date.now()}`;
-        logger.info('📞 Inbound call received', { callId, from: req.from });
+        console.log('!!!!!!!!!!!!!!!!!!!! INBOUND INVITE DETECTED !!!!!!!!!!!!!!!!!!!!');
+        logger.info('📞 Inbound INVITE received', {
+            callId,
+            from: req.from,
+            to: req.get('To'),
+            uri: req.uri,
+            contact: req.get('Contact'),
+            userAgent: req.get('User-Agent'),
+            source: req.source,
+            sourcePort: req.sourcePort
+        });
 
         // Emit event to let the app handle answering (e.g. starting pipeline)
         this.emit('inboundCall', { callId, req, res });
@@ -354,7 +365,7 @@ export class FreeSwitchService extends EventEmitter {
             headers: {
                 'To': `<sip:${username}@${domain}>`,
                 'From': `<sip:${username}@${domain}>`,
-                'Contact': `<sip:${username}@${process.env.SIP_PUBLIC_IP || '127.0.0.1'}:5062>`,
+                'Contact': `<sip:${username}@${process.env.SIP_PUBLIC_IP || '127.0.0.1'}:${config.sip.inbound.port}>`,
                 'Expires': '3600',
                 'Call-ID': regState.callId,
             }
@@ -366,6 +377,11 @@ export class FreeSwitchService extends EventEmitter {
         }
 
         try {
+            logger.info(`Sending REGISTER for ${username}`, {
+                uri: requestOpts.uri,
+                contact: requestOpts.headers['Contact'],
+                callId: requestOpts.headers['Call-ID']
+            });
             this.srf.request(requestOpts, (err: any, req: any) => {
                 if (err) {
                     logger.error(`Registration request failed for ${username}`, { error: err.message });
