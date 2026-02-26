@@ -515,15 +515,24 @@
                 }
             };
 
-            await fetch('/api/agents', {
+            const res = await fetch('/api/agents', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            await loadAgents();
-            if (data.id) {
+            const savedAgent = await res.json();
+
+            if (savedAgent && savedAgent.id) {
+                // Update hidden ID so subsequent saves are updates, not creates
+                agentIdInput.value = savedAgent.id;
+                
+                // Update UI state
+                document.getElementById('agentFormTitle').textContent = 'Update Agent: ' + savedAgent.name;
                 talkBtnTrigger.classList.remove('hidden');
                 deleteAgentBtn.classList.remove('hidden');
+                
+                // Refresh list and select the newly created/updated item
+                await loadAgents();
             }
         };
 

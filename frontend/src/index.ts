@@ -102,40 +102,30 @@ class VoiceAgentApp {
 
             if (agent) {
                 logger.info('Using agent configuration', { agentName: agent.name });
-                const llm = (pipeline as any).llm;
-                const tts = (pipeline as any).tts;
-
-                llm.setSystemPrompt(agent.systemPrompt);
-                llm.setModel(agent.llmModel);
-                llm.setTemperature(agent.temperature);
-                llm.setMaxTokens(agent.maxTokens);
-
-                tts.setSpeaker(agent.voiceId);
-                tts.setModel(agent.ttsModel);
+                // All configuration is now handled via pipeline.start()
             } else if (systemPrompt || voiceId) {
-                if (systemPrompt) (pipeline as any).llm?.setSystemPrompt?.(systemPrompt);
-                if (voiceId) (pipeline as any).tts?.setSpeaker?.(voiceId);
+                // If no agent, we might still have manual overrides
+                // These will be passed to start() below
             }
 
             // Register the pipeline IMMEDIATELY to avoid race conditions with events
             this.activePipelines.set(callId, pipeline);
             this.setupPipelineEvents(pipeline, callId);
 
-            // We need to start the bridge to get the port
-            await (pipeline as any).bridge.start();
-            const localPort = pipeline.localRtpPort;
-
             // Use SIP_PUBLIC_IP if available (especially for Docker networking), otherwise local
             const localIp = process.env.SIP_PUBLIC_IP || process.env.LOCAL_IP || '127.0.0.1';
+
+            // Start pipeline with agent config (or manual overrides)
+            // This handles bridge start, STT connect, and setting LLM/TTS/Plans
+            await pipeline.start(callId, undefined, undefined, agent || { systemPrompt, voiceId } as any);
+
+            const localPort = pipeline.localRtpPort;
             const localSdp = FreeSwitchService.generateSdp(localIp, localPort);
 
             logger.info('Starting outbound call via SIP Service', { callId, localPort, localIp });
 
             // Initiate call via FreeSWITCH with our SDP and pre-generated callId and selective settings
             await this.sipService.makeOutboundCall(phoneNumber, localSdp, callId, sipSettings);
-
-            // STT etc can start now
-            await (pipeline as any).stt.connect();
 
             logger.info('✅ Outbound call initiated', { callId, phoneNumber, localPort });
             return callId;
@@ -176,22 +166,24 @@ class VoiceAgentApp {
                     agentName: agent.name,
                     sipUsername: matchedSip?.username || 'unknown'
                 });
-                const llm = (pipeline as any).llm;
-                const tts = (pipeline as any).tts;
-
-                llm.setSystemPrompt(agent.systemPrompt);
-                llm.setModel(agent.llmModel);
-                llm.setTemperature(agent.temperature);
-                llm.setMaxTokens(agent.maxTokens);
-
-                tts.setSpeaker(agent.voiceId);
-                tts.setModel(agent.ttsModel);
             }
 
             this.activePipelines.set(callId, pipeline);
+            this.setupPipelineEvents(pipeline, callId);
 
-            // Start bridge to get local port
-            await (pipeline as any).bridge.start();
+            // Parse remote SDP to know where to send audio back
+            let remoteIp: string | undefined;
+            let remotePort: number | undefined;
+            if (req.body) {
+                const remote = FreeSwitchService.parseSdp(req.body);
+                remoteIp = remote.address;
+                remotePort = remote.port;
+            }
+
+            // Start pipeline with agent config
+            // This handles bridge start, STT connect, and setting LLM/TTS/Plans
+            await pipeline.start(callId, remoteIp, remotePort, agent);
+
             const localPort = pipeline.localRtpPort;
             // Use SIP_PUBLIC_IP if available (especially for Docker networking), otherwise local
             const localIp = process.env.SIP_PUBLIC_IP || process.env.LOCAL_IP || '127.0.0.1';
@@ -199,15 +191,6 @@ class VoiceAgentApp {
 
             // Answer via FreeSWITCH
             await this.freeSwitchService.answerInboundCall(req, res, localSdp);
-
-            // Parse remote SDP to know where to send audio back
-            if (req.body) {
-                const { address, port } = FreeSwitchService.parseSdp(req.body);
-                (pipeline as any).bridge.setRemoteEndpoint(address, port);
-            }
-
-            this.setupPipelineEvents(pipeline, callId);
-            await (pipeline as any).stt.connect();
 
             logger.info('📞 Inbound call answered, triggering greeting', { callId });
             await pipeline.sayHello();
@@ -294,7 +277,7 @@ app.get('/api/agents/:id', (req, res) => {
 
 // Create/Update agent
 app.post('/api/agents', (req, res) => {
-    const { id, name, systemPrompt, voiceId, llmProvider, llmModel, maxTokens, temperature, ttsProvider, ttsModel } = req.body;
+    const { id, name, systemPrompt, voiceId, llmProvider, llmModel, maxTokens, temperature, ttsProvider, ttsModel, startSpeakingPlan, stopSpeakingPlan } = req.body;
     if (!name || !systemPrompt || !voiceId) {
         return res.status(400).json({ error: 'Name, systemPrompt, and voiceId are required' });
     }
@@ -302,7 +285,8 @@ app.post('/api/agents', (req, res) => {
     const agentData = {
         name, systemPrompt, voiceId,
         llmProvider, llmModel, maxTokens: Number(maxTokens),
-        temperature: Number(temperature), ttsProvider, ttsModel
+        temperature: Number(temperature), ttsProvider, ttsModel,
+        startSpeakingPlan, stopSpeakingPlan
     };
 
     if (id) {
@@ -502,6 +486,8 @@ app.get('/api/sip/env-config', (_req, res) => {
 
     let isProcessing = false;
     let abortController: AbortController | null = null;
+    let interimStartTime = 0;
+    let maxInterimWords = 0;
 
     const handleStreamingResponse = async (transcript: string | null) => {
         // Abort previous turn if still running
@@ -540,19 +526,60 @@ app.get('/api/sip/env-config', (_req, res) => {
         }
     };
 
-    stt.on('connected', () => {
+    stt.on('connected', async () => {
         ws.send(JSON.stringify({ type: 'status', message: 'Connected' }));
+
+        // Respect initial greeting delay
+        if (agent?.startSpeakingPlan?.waitSeconds) {
+            logger.info(`Waiting ${agent.startSpeakingPlan.waitSeconds}s before greeting in browser`);
+            await new Promise(resolve => setTimeout(resolve, agent.startSpeakingPlan.waitSeconds * 1000));
+        }
+
         handleStreamingResponse(null);
     });
 
-    stt.on('transcript', (transcript: string) => {
+    stt.on('transcript', async (transcript: string) => {
+        // Reset barge-in tracking
+        interimStartTime = 0;
+        maxInterimWords = 0;
+
         ws.send(JSON.stringify({ type: 'transcript', text: transcript, isFinal: true }));
+
+        // Respect turn-taking delays (Smart Endpointing)
+        if (agent?.startSpeakingPlan?.smartEndpointing) {
+            const words = transcript.trim().split(/\s+/);
+            const lastWord = words[words.length - 1] || '';
+            const hasPunctuation = /[?.!]$/.test(transcript.trim());
+            const isNumber = /^\d+$/.test(lastWord.replace(/[?.!]/g, ''));
+
+            let delay = agent.startSpeakingPlan.onNoPunctuationSeconds;
+            if (hasPunctuation) delay = agent.startSpeakingPlan.onPunctuationSeconds;
+            if (isNumber) delay = agent.startSpeakingPlan.onNumberSeconds;
+
+            logger.info(`Turn-taking delay in browser: ${delay}s`, { transcript });
+            await new Promise(resolve => setTimeout(resolve, delay * 1000));
+        }
+
         handleStreamingResponse(transcript);
     });
 
     stt.on('interim', (transcript: string) => {
         ws.send(JSON.stringify({ type: 'transcript', text: transcript, isFinal: false }));
-        if (tts.playing || isProcessing) {
+
+        const isPlaying = tts.playing || isProcessing;
+        if (!isPlaying) return;
+
+        // Custom barge-in logic matching the pipeline
+        if (!interimStartTime) interimStartTime = Date.now();
+        const words = transcript.trim().split(/\s+/).length;
+        if (words > maxInterimWords) maxInterimWords = words;
+        const duration = (Date.now() - interimStartTime) / 1000;
+
+        const thresholdWords = agent?.stopSpeakingPlan?.interruptionThresholdWords ?? 2;
+        const thresholdSeconds = agent?.stopSpeakingPlan?.interruptionThresholdSeconds ?? 0.5;
+
+        if (maxInterimWords >= thresholdWords || duration >= thresholdSeconds) {
+            logger.info('Barge-in detected in browser', { words: maxInterimWords, duration });
             if (abortController) abortController.abort();
             tts.stop();
             ws.send(JSON.stringify({ type: 'barge-in' }));
