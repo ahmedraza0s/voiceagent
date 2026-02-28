@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
         rel="stylesheet">
+    <script src="auth.js"></script>
+    <script>requireAuth();</script>
     <style>
         /* Integrated Talk UI Styles */
         .talk-panel {
@@ -144,6 +146,8 @@
                 <a href="agents.html" class="nav-item active"><span>🤖</span><span class="nav-label">Agents</span></a>
                 <a href="sip-settings.html" class="nav-item"><span>📡</span><span class="nav-label">SIP
                         Settings</span></a>
+                <a href="#" class="nav-item" onclick="logout()"
+                    style="margin-top: auto; color: #ef4444;"><span>🚪</span><span class="nav-label">Logout</span></a>
             </div>
         </nav>
 
@@ -389,7 +393,7 @@
         sidebarToggle.onclick = () => sidebar.classList.toggle('expanded');
 
         async function loadAgents() {
-            agents = await fetch('/api/agents').then(r => r.json());
+            agents = await fetchWithAuth('/api/agents').then(r => r.json());
             agentList.innerHTML = agents.map(a => `
                 <div class="panel-item ${agentIdInput.value === a.id ? 'active' : ''}" onclick="editAgent('${a.id}')">
                     <div class="panel-item-title">${a.name}</div>
@@ -515,7 +519,7 @@
                 }
             };
 
-            const res = await fetch('/api/agents', {
+            const res = await fetchWithAuth('/api/agents', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -525,12 +529,12 @@
             if (savedAgent && savedAgent.id) {
                 // Update hidden ID so subsequent saves are updates, not creates
                 agentIdInput.value = savedAgent.id;
-                
+
                 // Update UI state
                 document.getElementById('agentFormTitle').textContent = 'Update Agent: ' + savedAgent.name;
                 talkBtnTrigger.classList.remove('hidden');
                 deleteAgentBtn.classList.remove('hidden');
-                
+
                 // Refresh list and select the newly created/updated item
                 await loadAgents();
             }
@@ -540,7 +544,7 @@
             const id = agentIdInput.value;
             if (!id || !confirm('Are you sure you want to delete this agent?')) return;
             try {
-                await fetch(`/api/agents/${id}`, { method: 'DELETE' });
+                await fetchWithAuth(`/api/agents/${id}`, { method: 'DELETE' });
                 showNewAgentForm();
             } catch (error) {
                 console.error('Delete failed:', error);

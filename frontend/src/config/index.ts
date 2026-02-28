@@ -32,7 +32,7 @@ export const config = {
     // FreeSWITCH ESL Configuration
     freeswitch: {
         host: process.env.FREESWITCH_HOST || '127.0.0.1',
-        port: parseInt(process.env.FREESWITCH_PORT || '8021', 10),
+        port: parseInt(process.env.FREESWITCH_PORT || '9022', 10),
         password: process.env.FREESWITCH_PASSWORD || 'ClueCon',
         sipGateway: process.env.FREESWITCH_SIP_GATEWAY || 'vivphone',
     },
@@ -59,7 +59,7 @@ export const config = {
             username: process.env.SIP_INBOUND_USERNAME || process.env.SIP_USERNAME || '',
             password: process.env.SIP_INBOUND_PASSWORD || process.env.SIP_PASSWORD || '',
             domain: process.env.SIP_INBOUND_DOMAIN || process.env.SIP_DOMAIN || '',
-            port: parseInt(process.env.SIP_INBOUND_PORT || process.env.SIP_PORT || '5060', 10),
+            port: parseInt(process.env.SIP_INBOUND_PORT || process.env.SIP_PORT || '5070', 10),
             proxy: process.env.SIP_INBOUND_PROXY || '',
         },
         outbound: {

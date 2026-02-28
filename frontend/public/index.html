@@ -1,14 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta http-equiv="refresh" content="0; url=dialer.html">
-    <title>AI Voice Agent</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | AI Voice</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .login-layout {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: radial-gradient(circle at 50% 10%, #1e1e38 0%, #0a0a0f 60%);
+            color: var(--text-color);
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .login-card h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-card p {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .error-message {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .btn-block {
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 
-<body>
-    <p>Redirecting to <a href="dialer.html">Dialer</a>...</p>
-    <script>window.location.href = "dialer.html";</script>
+<body class="login-layout">
+    <div class="login-card">
+        <h1>AI Voice Agent</h1>
+        <p>Sign in to access the control panel</p>
+
+        <div id="errorMsg" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="input-group">
+                <input type="email" id="email" placeholder="Email Address" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Sign In <span>→</span></button>
+        </form>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        // Redirect if already logged in
+        if (getToken()) {
+            window.location.href = 'dialer.html';
+        }
+
+        const loginForm = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+
+        loginForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = loginForm.querySelector('button');
+
+            submitBtn.innerHTML = 'Signing in...';
+            submitBtn.disabled = true;
+            errorMsg.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (data.success && data.token) {
+                    setAuthData(data.token, data.user);
+                    window.location.href = 'dialer.html';
+                } else {
+                    errorMsg.textContent = data.error || 'Invalid credentials';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Server connection failed. Please try again later.';
+                errorMsg.style.display = 'block';
+            } finally {
+                submitBtn.innerHTML = 'Sign In <span>→</span>';
+                submitBtn.disabled = false;
+            }
+        };
+    </script>
 </body>
 
 </html>
