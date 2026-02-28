@@ -98,8 +98,8 @@ class VoiceAgentApp {
 
             // Look up agent config
             // Priority: agentId -> sipSettings.inboundAgentId (mapping)
-            const agent = agentId ? agentService.getAgent(agentId) :
-                (sipSettings?.inboundAgentId ? agentService.getAgent(sipSettings.inboundAgentId) : undefined);
+            const agent = agentId ? await agentService.getAgentInternal(agentId) :
+                (sipSettings?.inboundAgentId ? await agentService.getAgentInternal(sipSettings.inboundAgentId) : undefined);
 
             if (agent) {
                 logger.info('Using agent configuration', { agentName: agent.name });
@@ -158,9 +158,8 @@ class VoiceAgentApp {
                 logger.warn('No SIP account matched for inbound call. Defaulting to first agent if available.', { toHeader });
             }
 
-            // Use mapped agent
             let agentId = matchedSip?.inboundAgentId;
-            let agent = agentId ? agentService.getAgent(agentId) : undefined;
+            let agent = agentId ? await agentService.getAgentInternal(agentId) : undefined;
 
             if (agent) {
                 logger.info('Assigning agent for inbound call', {
@@ -317,18 +316,18 @@ app.use('/api/calls', authenticateToken);
 // --- Agent Management API ---
 
 // List all agents
-app.get('/api/agents', (_req, res) => {
-    res.json(agentService.listAgents());
+app.get('/api/agents', async (req: any, res) => {
+    res.json(await agentService.listAgents(req.user.id));
 });
 
 // Get single agent
-app.get('/api/agents/:id', (req, res) => {
-    const agent = agentService.getAgent(req.params.id);
+app.get('/api/agents/:id', async (req: any, res) => {
+    const agent = await agentService.getAgent(req.params.id, req.user.id);
     return agent ? res.json(agent) : res.status(404).json({ error: 'Agent not found' });
 });
 
 // Create/Update agent
-app.post('/api/agents', (req, res) => {
+app.post('/api/agents', async (req: any, res) => {
     const { id, name, systemPrompt, voiceId, llmProvider, llmModel, maxTokens, temperature, ttsProvider, ttsModel, startSpeakingPlan, stopSpeakingPlan } = req.body;
     if (!name || !systemPrompt || !voiceId) {
         return res.status(400).json({ error: 'Name, systemPrompt, and voiceId are required' });
@@ -342,17 +341,17 @@ app.post('/api/agents', (req, res) => {
     };
 
     if (id) {
-        const updated = agentService.updateAgent(id, agentData);
+        const updated = await agentService.updateAgent(id, req.user.id, agentData);
         return updated ? res.json(updated) : res.status(404).json({ error: 'Agent not found' });
     } else {
-        const created = agentService.createAgent(name, systemPrompt, voiceId, agentData);
+        const created = await agentService.createAgent(req.user.id, name, systemPrompt, voiceId, agentData);
         return res.json(created);
     }
 });
 
 // Delete agent
-app.delete('/api/agents/:id', (req, res) => {
-    const success = agentService.deleteAgent(req.params.id);
+app.delete('/api/agents/:id', async (req: any, res) => {
+    const success = await agentService.deleteAgent(req.params.id, req.user.id);
     return success ? res.json({ success: true }) : res.status(404).json({ error: 'Agent not found' });
 });
 
@@ -513,11 +512,11 @@ app.get('/api/sip/env-config', (_req, res) => {
 });
 
 // WebSocket: Full AI conversation for browser testing
-(app as any).ws('/ws/browser-talk', (ws: any, req: any) => {
+(app as any).ws('/ws/browser-talk', async (ws: any, req: any) => {
     logger.info('🧪 Browser Talk WebSocket connected');
 
     const agentId = req.query.agentId as string;
-    const agent = agentId ? agentService.getAgent(agentId) : null;
+    const agent = agentId ? await agentService.getAgentInternal(agentId) : null;
 
     const stt = new DeepgramSTTService();
     const llm = new GroqLLMService();
