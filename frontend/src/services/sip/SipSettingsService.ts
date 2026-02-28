@@ -70,6 +70,28 @@ export class SipSettingsService {
         }
     }
 
+    /**
+     * Find a SIP setting matching an inbound SIP To: header.
+     * Queries DB directly with index — O(log n), not O(n) full table scan.
+     * Used exclusively for inbound call routing (no userId needed).
+     */
+    async findByToHeader(toHeader: string): Promise<SipSettings | undefined> {
+        try {
+            const res = await query(
+                `SELECT * FROM sip_settings
+                 WHERE $1 LIKE '%' || username || '%'
+                    OR (caller_id IS NOT NULL AND $1 LIKE '%' || caller_id || '%')
+                 LIMIT 1`,
+                [toHeader]
+            );
+            if (res.rows.length === 0) return undefined;
+            return this.mapDbRowToSipSettings(res.rows[0]);
+        } catch (error) {
+            logger.error('Failed to find SIP settings by To header', { error, toHeader });
+            return undefined;
+        }
+    }
+
     async createSettings(userId: number, settings: Omit<SipSettings, 'id' | 'createdAt' | 'updatedAt' | 'userId'>): Promise<SipSettings> {
         const id = uuidv4();
         try {

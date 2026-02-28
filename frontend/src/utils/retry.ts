@@ -1,4 +1,5 @@
 import logger from './logger';
+import axios from 'axios';
 
 interface RetryOptions {
     maxAttempts?: number;
@@ -8,8 +9,25 @@ interface RetryOptions {
 }
 
 /**
- * Retry a function with exponential backoff
- * Used for external API calls (Deepgram, Groq, Sarvam)
+ * Check if an error is a deliberate abort/cancellation and should NOT be retried.
+ * Covers: AbortController signals, axios cancels ("canceled"), and Groq stream aborts.
+ */
+function isAbortError(error: any): boolean {
+    if (!error) return false;
+    // AbortController
+    if (error.name === 'AbortError') return true;
+    // Axios cancel
+    if (axios.isCancel(error)) return true;
+    // "canceled" string from Groq SDK / node-fetch
+    if (typeof error.message === 'string' && error.message.toLowerCase() === 'canceled') return true;
+    // AbortSignal triggered
+    if (error.code === 'ERR_CANCELED') return true;
+    return false;
+}
+
+/**
+ * Retry a function with exponential backoff.
+ * Intentional aborts (barge-in, user cancel) are rethrown immediately without retrying.
  */
 export async function retry<T>(
     fn: () => Promise<T>,
@@ -29,6 +47,11 @@ export async function retry<T>(
             return await fn();
         } catch (error) {
             lastError = error as Error;
+
+            // Never retry intentional aborts — throw immediately
+            if (isAbortError(lastError)) {
+                throw lastError;
+            }
 
             if (attempt === maxAttempts) {
                 logger.error('Max retry attempts reached', {
@@ -57,3 +80,4 @@ export async function retry<T>(
 
     throw lastError!;
 }
+

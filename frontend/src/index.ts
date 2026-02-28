@@ -142,17 +142,12 @@ class VoiceAgentApp {
 
             const pipeline = new ConversationPipeline();
 
-            // Identify which SIP account this call came for
-            // We'll check the 'To' header which usually contains the dialed number in some form
+            // Identify which SIP account this call came for using direct DB lookup
+            // findByToHeader() queries DB with LIKE filter — no full table scan
             const toHeader = req.get('To') || '';
-            const allSipSettings = await sipSettingsService.listSettings();
+            logger.info('Identifying SIP account for inbound call', { toHeader });
 
-            logger.info('Identifying SIP account for inbound call', { toHeader, availableAccounts: allSipSettings.map(s => s.username) });
-
-            // Try to find matching SIP setting by username or callerId in the To header
-            const matchedSip = allSipSettings.find(s =>
-                toHeader.includes(s.username) || (s.callerId && toHeader.includes(s.callerId))
-            );
+            const matchedSip = await sipSettingsService.findByToHeader(toHeader);
 
             if (!matchedSip) {
                 logger.warn('No SIP account matched for inbound call. Defaulting to first agent if available.', { toHeader });
@@ -255,8 +250,8 @@ class VoiceAgentApp {
 const { app } = expressWs(express());
 const voiceApp = new VoiceAgentApp();
 
-// Track active call to prevent duplicates/loops
-let activeCall: { callId: string; phoneNumber: string } | null = null;
+// Track active calls per user to prevent duplicates — Map<userId, activeCall>
+const activeCallsByUser = new Map<number, { callId: string; phoneNumber: string }>();
 
 app.use(cors());
 app.use(express.json());
@@ -398,49 +393,54 @@ app.delete('/api/sip-settings/:id', async (req: any, res) => {
 });
 
 // --- Call Control API ---
-app.post('/api/call', async (req, res) => {
+app.post('/api/call', async (req: any, res) => {
     const { phoneNumber, sipId, agentId, systemPrompt, voiceId } = req.body;
     if (!phoneNumber) {
         return res.status(400).json({ error: 'Phone number is required' });
     }
 
-    if (activeCall) {
-        logger.warn('Call already in progress, rejecting new call', {
-            activeCall: activeCall.phoneNumber,
+    const userId: number = req.user.id;
+    const existingCall = activeCallsByUser.get(userId);
+    if (existingCall) {
+        logger.warn('Call already in progress for user, rejecting new call', {
+            userId,
+            activeCall: existingCall.phoneNumber,
             requested: phoneNumber
         });
         return res.status(429).json({
             error: 'Call already in progress',
-            activeCall: activeCall.phoneNumber
+            activeCall: existingCall.phoneNumber
         });
     }
 
     try {
         const callId = await voiceApp.makeOutboundCall(phoneNumber, sipId, agentId, systemPrompt, voiceId);
-        activeCall = { callId, phoneNumber };
+        activeCallsByUser.set(userId, { callId, phoneNumber });
 
-        logger.info('✅ Call initiated successfully', { callId, phoneNumber, agentId });
+        logger.info('✅ Call initiated successfully', { callId, phoneNumber, agentId, userId });
         return res.json({ success: true, callId });
     } catch (error: any) {
-        activeCall = null;
+        activeCallsByUser.delete(userId);
         logger.error('Failed to initiate call', { error: error.message, phoneNumber });
         return res.status(500).json({ error: 'Failed to initiate call' });
     }
 });
 
 // API: End a call
-app.post('/api/end-call', async (req, res) => {
+app.post('/api/end-call', async (req: any, res) => {
     const { callId } = req.body;
     if (!callId) {
         return res.status(400).json({ error: 'callId is required' });
     }
 
+    const userId: number = req.user.id;
     try {
         await voiceApp.endCall(callId);
 
-        if (activeCall?.callId === callId) {
-            activeCall = null;
-            logger.info('✅ Active call cleared', { callId });
+        const userCall = activeCallsByUser.get(userId);
+        if (userCall?.callId === callId) {
+            activeCallsByUser.delete(userId);
+            logger.info('✅ Active call cleared', { callId, userId });
         }
 
         return res.json({ success: true });
