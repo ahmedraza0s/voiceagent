@@ -76,7 +76,7 @@ class VoiceAgentApp {
 
     private async initializeSipRegistrations() {
         this.freeSwitchService.on('connected', async () => {
-            const settings = sipSettingsService.listSettings();
+            const settings = await sipSettingsService.listSettings();
             logger.info(`🔄 Initializing ${settings.length} SIP registrations`);
             for (const s of settings) {
                 await this.freeSwitchService.registerSettings(s);
@@ -94,7 +94,7 @@ class VoiceAgentApp {
             const pipeline = new ConversationPipeline();
 
             // Look up SIP settings if provided
-            const sipSettings = sipId ? sipSettingsService.getSettings(sipId) : undefined;
+            const sipSettings = sipId ? await sipSettingsService.getSettings(sipId) : undefined;
 
             // Look up agent config
             // Priority: agentId -> sipSettings.inboundAgentId (mapping)
@@ -145,7 +145,7 @@ class VoiceAgentApp {
             // Identify which SIP account this call came for
             // We'll check the 'To' header which usually contains the dialed number in some form
             const toHeader = req.get('To') || '';
-            const allSipSettings = sipSettingsService.listSettings();
+            const allSipSettings = await sipSettingsService.listSettings();
 
             logger.info('Identifying SIP account for inbound call', { toHeader, availableAccounts: allSipSettings.map(s => s.username) });
 
@@ -358,19 +358,19 @@ app.delete('/api/agents/:id', async (req: any, res) => {
 // --- SIP Settings Management API ---
 
 // List all SIP settings
-app.get('/api/sip-settings', (_req, res) => {
-    res.json(sipSettingsService.listSettings());
+app.get('/api/sip-settings', async (req: any, res) => {
+    res.json(await sipSettingsService.listSettings(req.user.id));
 });
 
 // Create/Update SIP settings
-app.post('/api/sip-settings', async (req, res) => {
+app.post('/api/sip-settings', async (req: any, res) => {
     const { id, name, username, password, domain, port, callerId, proxy, inboundAgentId } = req.body;
     if (!name || !username || !domain || !port) {
         return res.status(400).json({ error: 'Name, username, domain, and port are required' });
     }
 
     if (id) {
-        const updated = sipSettingsService.updateSettings(id, {
+        const updated = await sipSettingsService.updateSettings(id, req.user.id, {
             name, username, password, domain, port, callerId, proxy, inboundAgentId
         });
         if (updated) {
@@ -380,7 +380,7 @@ app.post('/api/sip-settings', async (req, res) => {
         }
         return res.status(404).json({ error: 'Settings not found' });
     } else {
-        const created = sipSettingsService.createSettings({
+        const created = await sipSettingsService.createSettings(req.user.id, {
             name, username, password, domain, port, callerId, proxy, inboundAgentId
         });
         // Register new account
@@ -390,10 +390,10 @@ app.post('/api/sip-settings', async (req, res) => {
 });
 
 // Delete SIP settings
-app.delete('/api/sip-settings/:id', async (req, res) => {
+app.delete('/api/sip-settings/:id', async (req: any, res) => {
     const id = req.params.id;
     await voiceApp.unregisterSipAccount(id);
-    const success = sipSettingsService.deleteSettings(id);
+    const success = await sipSettingsService.deleteSettings(id, req.user.id);
     return success ? res.json({ success: true }) : res.status(404).json({ error: 'Settings not found' });
 });
 
