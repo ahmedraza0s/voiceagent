@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | AI Voice</title>
+    <title>Register | AI Voice</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap"
         rel="stylesheet">
@@ -54,6 +54,16 @@
             display: none;
         }
 
+        .success-message {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+
         .btn-block {
             width: 100%;
             margin-top: 1rem;
@@ -96,24 +106,25 @@
 
 <body class="login-layout">
     <div class="login-card">
-        <h1>AI Voice Agent</h1>
-        <p>Sign in to access the control panel</p>
+        <h1>Register Account</h1>
+        <p>Create a new account to access the control panel</p>
 
         <div id="errorMsg" class="error-message"></div>
+        <div id="successMsg" class="success-message"></div>
 
-        <form id="loginForm">
+        <form id="registerForm">
             <div class="input-group">
                 <input type="email" id="email" placeholder="Email Address" required>
             </div>
             <div class="input-group">
                 <input type="password" id="password" placeholder="Password" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Sign In <span>→</span></button>
+            <button type="submit" class="btn btn-primary btn-block">Sign Up <span>→</span></button>
         </form>
 
         <div class="auth-link-container">
-            <span>Don't have an account?</span>
-            <a href="register.html" class="auth-link">Sign up</a>
+            <span>Already have an account?</span>
+            <a href="index.html" class="auth-link">Sign in</a>
         </div>
     </div>
 
@@ -124,21 +135,23 @@
             window.location.href = 'dialer.html';
         }
 
-        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
         const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
 
-        loginForm.onsubmit = async (e) => {
+        registerForm.onsubmit = async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const submitBtn = loginForm.querySelector('button');
+            const submitBtn = registerForm.querySelector('button');
 
-            submitBtn.innerHTML = 'Signing in...';
+            submitBtn.innerHTML = 'Signing up...';
             submitBtn.disabled = true;
             errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
 
             try {
-                const res = await fetch('/api/auth/login', {
+                const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -146,18 +159,23 @@
 
                 const data = await res.json();
 
-                if (data.success && data.token) {
-                    setAuthData(data.token, data.user);
-                    window.location.href = 'dialer.html';
+                if (data.success) {
+                    successMsg.textContent = 'Account created successfully! Redirecting to login...';
+                    successMsg.style.display = 'block';
+                    registerForm.reset();
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
                 } else {
-                    errorMsg.textContent = data.error || 'Invalid credentials';
+                    errorMsg.textContent = data.error || 'Registration failed';
                     errorMsg.style.display = 'block';
+                    submitBtn.innerHTML = 'Sign Up <span>→</span>';
+                    submitBtn.disabled = false;
                 }
             } catch (err) {
                 errorMsg.textContent = 'Server connection failed. Please try again later.';
                 errorMsg.style.display = 'block';
-            } finally {
-                submitBtn.innerHTML = 'Sign In <span>→</span>';
+                submitBtn.innerHTML = 'Sign Up <span>→</span>';
                 submitBtn.disabled = false;
             }
         };
