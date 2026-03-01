@@ -291,7 +291,7 @@
                                     data-tooltip="Wait time after you end with a question mark or period.">Wait after
                                     Punctuation (s)</label>
                                 <div class="range-group">
-                                    <input type="range" id="onPunctuationSeconds" min="0.1" max="3" step="0.1"
+                                    <input type="range" id="onPunctuationSeconds" min="0" max="3" step="0.1"
                                         value="0.8">
                                     <span id="onPunctuationSecondsValue" class="range-value">0.8</span>
                                 </div>
@@ -301,7 +301,7 @@
                                     data-tooltip="Wait time if you stop talking without a clear sentence ending.">Wait
                                     after No Punctuation (s)</label>
                                 <div class="range-group">
-                                    <input type="range" id="onNoPunctuationSeconds" min="0.5" max="5" step="0.1"
+                                    <input type="range" id="onNoPunctuationSeconds" min="0" max="5" step="0.1"
                                         value="1.5">
                                     <span id="onNoPunctuationSecondsValue" class="range-value">1.5</span>
                                 </div>
@@ -311,7 +311,7 @@
                                     data-tooltip="Wait time after you speak a number (useful for zip codes/IDs).">Wait
                                     after Number (s)</label>
                                 <div class="range-group">
-                                    <input type="range" id="onNumberSeconds" min="0.1" max="3" step="0.1" value="1.0">
+                                    <input type="range" id="onNumberSeconds" min="0" max="3" step="0.1" value="1.0">
                                     <span id="onNumberSecondsValue" class="range-value">1.0</span>
                                 </div>
                             </div>
@@ -325,7 +325,7 @@
                                     data-tooltip="Number of words you must speak to interrupt the AI.">Interruption Word
                                     Threshold</label>
                                 <div class="range-group">
-                                    <input type="range" id="interruptionThresholdWords" min="1" max="10" step="1"
+                                    <input type="range" id="interruptionThresholdWords" min="0" max="10" step="1"
                                         value="2">
                                     <span id="interruptionThresholdWordsValue" class="range-value">2</span>
                                 </div>
@@ -335,7 +335,7 @@
                                     data-tooltip="How long you must speak to interrupt the AI.">Interruption Time
                                     Threshold (s)</label>
                                 <div class="range-group">
-                                    <input type="range" id="interruptionThresholdSeconds" min="0.1" max="2" step="0.1"
+                                    <input type="range" id="interruptionThresholdSeconds" min="0" max="2" step="0.1"
                                         value="0.5">
                                     <span id="interruptionThresholdSecondsValue" class="range-value">0.5</span>
                                 </div>
